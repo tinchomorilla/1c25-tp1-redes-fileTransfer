@@ -1,9 +1,9 @@
 from mininet.topo import Topo
 from mininet.net import Mininet
-from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 from mininet.log import setLogLevel
 from mininet.cli import CLI
+import time
 
 class FragmentationTopo(Topo):
     def build(self):
@@ -20,25 +20,38 @@ class FragmentationTopo(Topo):
 
 def run():
     topo = FragmentationTopo()
-    net = Mininet(topo=topo, link=TCLink)
+    # net = Mininet(topo=topo, link=TCLink)
+
+    net = Mininet(topo=topo, link=TCLink, controller=None, autoSetMacs=True, autoStaticArp=True)
     net.start()
 
-    print("+++ Red levantada")
+    # Modo bridge para switches (sin controlador)
+    for switch in net.switches:
+        switch.cmd("ovs-vsctl set-fail-mode {} standalone".format(switch.name))
+    net.start()
 
-    # Reducir el MTU en una interfaz en el switch s2
+    print("*** Aplicando configuraciones de red y levantando servidor en H2")
     s2 = net.get('s2')
-    s2.cmd("ifconfig s2-eth0 mtu 500")
-    print("+++ MTU reducido a 500 bytes en s2-eth0")
-
-    # Simular pérdida de paquetes en la interfaz hacia h2
+    s2.cmd("ifconfig s2-eth1 mtu 500")  # Reducir MTU para forzar fragmentación
     s3 = net.get('s3')
-    s3.cmd("tc qdisc add dev s3-eth1 root netem loss 10%") 
-    print("+++ Packet loss del 10% aplicado en s3-eth1")
+    s3.cmd("tc qdisc add dev s3-eth1 root netem loss 10%")  # Simular pérdida de paquetes
+
+    h2 = net.get('h2')
+    h2.cmd("iperf -s -u &")  # Levantar servidor UDP
+
+    # print("*** Iniciando captura de tráfico, sleeping")
+    # #s2.cmd("udpdump -i s2-eth1 -w /tmp/fragmentacion.pcap &") # Captura de tráfico en s2
+    # time.sleep(10)
+
+    # h1 = net.get('h1')
+    # # h1.cmd("iptables -t mangle -A OUTPUT -p udp -j DF --clear")  # Eliminar DF para permitir fragmentación
+
+    # print("*** Enviando tráfico UDP desde h1 a h2")
+    # h1.cmd("iperf -c 10.0.0.2 -u -l 2000 -t 10")
 
     CLI(net)
+    net.stop()
 
-topos = { "fragmentation_topo" : ( lambda: FragmentationTopo() )}
-
-if __name__ == '_main_':
+if __name__ == '__main__':
     setLogLevel('info')
     run()

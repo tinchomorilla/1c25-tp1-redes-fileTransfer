@@ -1,17 +1,37 @@
-# TP1
+# TP1 - Fragmentación IPv4 - Sistemas Distribuidos (75.43)
 
+## Objetivo
 
-## 6. Anexo: Fragmentación IPv4
+Comprobar empíricamente:
+- El proceso de **fragmentación IPv4**.
+- El comportamiento de **TCP** y **UDP** ante la pérdida de fragmentos.
+- El **aumento de tráfico** al reducirse el MTU mínimo en la red.
 
-### Objetivo del trabajo
+Para esto se utiliza:
+- **Mininet** para simular la red.
+- **iperf** para generar tráfico TCP/UDP.
+- **Wireshark** para capturar y analizar los paquetes.
 
-Comprender y comprobar empíricamente:
+---
 
-- El proceso de fragmentación en IPv4.
-- El comportamiento de TCP y UDP ante la pérdida de fragmentos.
-- El aumento de tráfico causado por la reducción del MTU en la red.
+## Estructura del experimento
 
-La red se emula usando Mininet, y se analiza el tráfico con iperf y Wireshark.
+El experimento está completamente automatizado mediante un script de Python que utiliza Mininet para crear la red, aplicar configuraciones, y levantar los servicios necesarios.
+
+### Topología
+
+```
+h1 --- s1 --- s2 --- s3 --- h2
+```
+
+- 2 hosts (`h1`, `h2`)
+- 3 switches intermedios
+- MTU reducido en una interfaz de `s2`
+- Pérdida de paquetes simulada en una interfaz de `s3`
+
+---
+
+## Instrucciones paso a paso
 
 ### Preparación del entorno
 Instalar Mininet, iperf y Wireshark:
@@ -20,56 +40,23 @@ sudo apt update
 sudo apt install mininet iperf wireshark
 ```
 
-### Topología de la red
-
-```
-h1 --- s1 --- s2 --- s3 --- h2
-```
-
-- 2 hosts (h1 y h2)
-- 3 switches conectados linealmente (s1, s2, s3)
-- s2 tendrá una interfaz con MTU reducida
-- s3 tendrá una interfaz con pérdida de paquetes
-
-### Pasos para reproducir
-
-#### 1.  Levantar la red
+### 1. Ejecutar el script
 
 ```bash
-sudo mn --custom fragmentacion.py --topo fragmentation_topo
+sudo python3 fragmentation_topo.py
 ```
 
-#### 2.  Verificar conectividad  básica
+Este script:
+- Crea la topología de red
+- Aplica un MTU de 500 bytes en `s2-eth1`
+- Simula pérdida de paquetes del 10% en `s3-eth1`
+- Elimina el flag DF para permitir fragmentación
+- Inicia `iperf -s -u` en `h2`
+- Podemos ver con `wireshark> h2 netstat -lunp` que el puerto UDP es el 5001
 
-```bash
-mininet> h1 ping h2
-```
+---
 
-#### 3. Forzar la fragmentacion reduciendo el MTU de s2
-
-```bash
-mininet> s2 ifconfig s2-eth1 mtu 500
-```
-
-#### 4.  Simular la pérdida de paquetes en s3
-
-```bash
-mininet> s3 tc qdisc add dev s3-eth1 root netem loss 10%
-```
-
-#### 5. Ejecutar pruebas con iperf
-
-##### UDP sin fragmentación
-```bash
-mininet> h2 iperf -s -u &
-mininet> h1 iperf -c h2 -u -l 400 -t 10
-```
-
-##### TCP sin fragmentación
-```bash
-mininet> h2 iperf -s &
-mininet> h1 iperf -c h2 -l 400 -t 10
-```
+### 2. Enviar y capturar tráfico
 
 ##### UDP con fragmentación
 (usar tamaño mayor al MTU reducido)
@@ -80,3 +67,69 @@ mininet> h1 iperf -c h2 -u -l 1500 -t 10
 ```bash
 mininet> h1 iperf -c h2 -l 1500 -t 10
 ```
+
+
+Desde una terminal externa o Wireshark, capturá en la interfaz correspondiente (ej. `s2-eth1`).
+
+
+#### Filtros recomendados en Wireshark:
+- Fragmentos IP:
+  ```
+  ip.flags.mf == 1 || ip.frag_offset > 0
+  ```
+- Retransmisiones TCP:
+  ```
+  tcp.analysis.retransmission
+  ```
+
+- Pérdida de paquetes UDP:
+  ```
+wireshark /tmp/fragmentacion.pcap
+```
+---
+
+## Análisis esperado
+
+### Fragmentación IPv4
+- Ver múltiples fragmentos con mismo ID
+- Offsets: 0, 480, 960, etc.
+- `MF = 1` en fragmentos intermedios, `MF = 0` en el último
+
+### UDP con pérdida
+- No hay retransmisión
+- Faltan fragmentos en la secuencia
+
+### TCP con pérdida (recomendado para extensión)
+- Se ven retransmisiones
+- Mayor latencia por reenvíos
+
+### Aumento de tráfico con MTU bajo
+- Mismo payload genera más paquetes IP
+
+---
+
+## Screenshots de Wireshark
+
+Agregá aquí capturas de:
+- Fragmentos IP
+- Campo MF y Offset en detalle
+- Pérdida de paquetes UDP
+- Retransmisión TCP (si se prueba)
+
+---
+
+## 🔹 Conclusiones (para completar)
+
+- Se observó claramente la fragmentación de paquetes al reducir el MTU
+- Se evidenció la diferencia de comportamiento entre TCP y UDP ante pérdida de fragmentos
+- El uso de Wireshark permitió identificar los fragmentos, el flag MF y los offsets
+- Automatizar el experimento permitió ejecutar pruebas consistentes y reproducibles
+
+---
+
+## 📖 Bibliografía / herramientas
+
+- Documentación oficial de Mininet
+- RFC 791 - Internet Protocol
+- `man iperf`, `man ping`
+- https://wiki.wireshark.org/IPv4
