@@ -1,6 +1,6 @@
 import argparse
 
-from client import Client
+from src.client.client import Client
 SERVER_NAME = '127.0.0.1'
 SERVER_PORT = 12000
 BUFFER_SIZE = 2048
