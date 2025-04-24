@@ -1,11 +1,10 @@
-# upload.py
 import argparse
 import os
 import socket
-from rdt import StopAndWaitRDT, MAX_DATA_SIZE
+from rdt import StopAndWaitRDT, MAX_DATA_SIZE, TYPE_INIT, TYPE_READY
 
 # Comando especial para señalar fin de archivo
-DONE_MARKER = b'__UPLOAD_DONE__'
+DONE_MARKER = b'_UPLOAD_DONE_'
 
 def main():
     parser = argparse.ArgumentParser(description="Upload a file to the server using Stop & Wait RDT.")
@@ -24,11 +23,18 @@ def main():
     # Inicializar RDT
     rdt = StopAndWaitRDT(sock, addr=server_addr, is_sender=True)
 
-    # Enviar comando inicial UPLOAD <filename>
+    # Paso 1: Enviar INIT
     init_msg = f"UPLOAD|{args.name}".encode()
-    rdt.send(init_msg)
+    rdt.send(init_msg, pkt_type=TYPE_INIT)
 
-    # Abrir archivo y fragmentar
+    # Paso 2: Esperar ACK del INIT
+    print("[CLIENT] Esperando INIT_ACK...")
+    _, _ = rdt.recv()  # ACK del INIT
+
+    # Paso 3: Enviar READY
+    rdt.send(b"READY", pkt_type=TYPE_READY)
+
+    # Paso 4: Enviar archivo fragmentado
     with open(args.src, "rb") as f:
         while True:
             chunk = f.read(MAX_DATA_SIZE)
@@ -36,7 +42,7 @@ def main():
                 break
             rdt.send(chunk)
 
-    # Enviar marcador de fin de transmisión
+    # Paso 5: Enviar marcador de fin de transmisión
     rdt.send(DONE_MARKER)
     print(f"[CLIENT] Archivo '{args.src}' enviado como '{args.name}'")
 

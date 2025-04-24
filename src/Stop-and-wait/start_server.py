@@ -1,35 +1,29 @@
-# start_server.py
 import argparse
 import os
 import socket
 import threading
-from rdt import StopAndWaitRDT, MAX_DATA_SIZE
+from rdt import StopAndWaitRDT, MAX_DATA_SIZE, TYPE_INIT, TYPE_READY, TYPE_INIT_ACK
 
-DONE_MARKER = b'__UPLOAD_DONE__'
+DONE_MARKER = b'_UPLOAD_DONE_'
+clients_in_progress = set()
 
-def handle_client(sock, addr, storage_dir):
-    print(f"[SERVER] Atendiendo nuevo cliente: {addr}")
-    rdt = StopAndWaitRDT(sock, is_sender=False)
+def handle_client(sock, addr, storage_dir, filename):
+    print(f"[SERVER] Atendiendo cliente: {addr}")
+    rdt = StopAndWaitRDT(sock, addr=addr, is_sender=False)
 
-    # Primer mensaje: UPLOAD|filename
-    init_msg, _ = rdt.recv()
-    if not init_msg.startswith(b"UPLOAD|"):
-        print(f"[SERVER] Comando invalido de {addr}")
-        return
-
-    filename = init_msg.decode().split("|")[1]
     filepath = os.path.join(storage_dir, filename)
 
     with open(filepath, "wb") as f:
-        print(f"[SERVER] Recibiendo archivo: {filename}")
         while True:
             data, _ = rdt.recv()
             if data == DONE_MARKER:
                 print(f"[SERVER] Fin de transmisión recibido de {addr}")
                 break
+            print(f"[SERVER] Recibiendo datos de {addr}: {data}")
             f.write(data)
 
-    print(f"[SERVER] Archivo recibido: {filepath}")
+    print(f"[SERVER] Archivo recibido de {addr}: {filepath}")
+    clients_in_progress.discard(addr)
 
 def main():
     parser = argparse.ArgumentParser(description="Start Stop & Wait file server.")
@@ -41,19 +35,49 @@ def main():
 
     os.makedirs(args.storage, exist_ok=True)
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((args.host, args.port))
+    server_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_sock.bind((args.host, args.port))
+    server_sock.settimeout(None)
     print(f"[SERVER] Escuchando en {args.host}:{args.port}")
 
-    # Como es UDP, podemos compartir el socket entre hilos
     while True:
         try:
-            sock.settimeout(None)
-            data, addr = sock.recvfrom(1024)
-            sock.sendto(data, addr)  # reenviamos para que el hilo pueda empezar
-            # t = threading.Thread(target=handle_client, args=(sock, addr, args.storage))
-            # t.start()
-            handle_client(sock, addr, args.storage)
+            # init_data, client_addr = server_sock.recvfrom(1024)
+
+            # Handshake inicial: INIT
+            rdt = StopAndWaitRDT(server_sock, is_sender=False)
+            init_data, client_addr = rdt.recv()  # INIT
+
+            if client_addr in clients_in_progress:
+                continue
+
+            rdt.addr = client_addr
+            print(f"[SERVER] INIT recibido de {client_addr}: {init_data}")
+
+            # Validar INIT y extraer nombre
+            if not init_data.startswith(b"UPLOAD|"):
+                print(f"[SERVER] Comando INIT inválido de {client_addr}")
+                continue
+
+            filename = init_data.decode().split("|")[1]
+
+            # Responder INIT-ACK
+            rdt.send(b"ACK_INIT", pkt_type=TYPE_INIT_ACK)
+
+            # Esperar READY
+            ready_data, _ = rdt.recv()
+            if ready_data != b"READY":
+                print(f"[SERVER] READY inválido de {client_addr}")
+                continue
+
+            clients_in_progress.add(client_addr)
+
+            t = threading.Thread(
+                target=handle_client,
+                args=(server_sock, client_addr, args.storage, filename),
+                daemon=True
+            )
+            t.start()
         except KeyboardInterrupt:
             print("[SERVER] Cerrando servidor")
             break
