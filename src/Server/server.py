@@ -2,6 +2,7 @@ import os
 import socket
 from src.Server.listener import Listener
 
+
 class Server:
     def __init__(self, host: str, port: int, storage_dir: str):
         self.host = host
@@ -15,5 +16,5 @@ class Server:
         self.sock.bind((self.host, self.port))
         print(f"[SERVER] Escuchando en {self.host}:{self.port}")
 
-        listener = Listener(self.sock, self.storage_dir)
-        listener.listen()
+        listener = Listener(self.sock)
+        listener.listen(self.storage_dir)
