@@ -1,4 +1,4 @@
-from client_handler import ClientHandler
+from src.Server.client_handler import ClientHandler
 
 class Listener:
     def __init__(self, sock):
