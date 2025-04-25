@@ -9,7 +9,7 @@ def main():
     server = Server(args.host, args.port, args.storage, args.protocol)
 
     # Iniciar el servidor
-    server.start()
+    server.run()
 
 
 if __name__ == "__main__":
