@@ -1,23 +1,42 @@
-from socket import *
+import socket
+import struct
 
-SERVER_ADDR = '127.0.0.1'
-SERVER_PORT = 12000
-BUFFER_SIZE = 2048
+from src.RDT.stop_and_wait import MAX_DATA_SIZE, StopAndWaitRDT
+
 
 class Client:
-    def __init__(self, sever_addr=SERVER_ADDR, server_port=SERVER_PORT):
-        self.socket = socket(AF_INET, SOCK_DGRAM)
-        self.server_addr = sever_addr
+    def __init__(self, server_addr: str, server_port: int, protocol: str):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_addr = server_addr
         self.server_port = server_port
+        self.protocol = (
+            protocol  # Protocolo de recuperación de errores (e.g., Stop-and-Wait)
+        )
 
-    def upload(self, message: str):
-        modified_message, server_address = self._send_msg(message)
-        print(modified_message.decode())
+    def upload(self, src: str, name: str):
+        # Inicializar RDT
+        rdt = StopAndWaitRDT(
+            self.socket, addr=(self.server_addr, self.server_port), is_sender=True
+        )
+
+        # Enviar comando inicial UPLOAD <filename>
+        init_msg = f"UPLOAD|{name}".encode()
+        rdt.send(init_msg)
+
+        # Abrir archivo y fragmentar
+        with open(src, "rb") as f:
+            while True:
+                chunk = f.read(MAX_DATA_SIZE)
+                if not chunk:
+                    break
+                rdt.send(chunk)
+
+        # Enviar marcador de fin de transmisión
+        rdt.send(b"__UPLOAD_DONE__")
+        print(f"[CLIENT] Archivo '{src}' enviado como '{name}'")
+
+        # Cerrar socket
         self.socket.close()
 
-    def _send_msg(self, message: str):
-        self.socket.sendto(message.encode(), (self.server_addr, self.server_port))
-        return self.socket.recvfrom(BUFFER_SIZE)
-
-    def download(self):
+    def download(self, name: str, dst: str):
         pass

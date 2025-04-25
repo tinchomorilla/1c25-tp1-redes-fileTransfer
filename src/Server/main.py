@@ -1,11 +1,16 @@
-from src.Server.server import Server
-SERVER_PORT = 12000
-BUFFER_SIZE = 2048
-SERVER_NAME = '127.0.0.1'
+from server import Server
+from parse_args import parse_arguments
+
 
 def main():
-    server = Server(SERVER_NAME, SERVER_PORT)
+    args = parse_arguments()
+
+    # Instancia del servidor
+    server = Server(args.host, args.port, args.storage, args.protocol)
+
+    # Iniciar el servidor
     server.start()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
