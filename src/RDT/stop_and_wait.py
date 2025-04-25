@@ -27,7 +27,7 @@ class StopAndWaitRDT:
             print(f"[RDT] Enviando paquete: {self.seq}, longitud: {len(data)}")
             self.sock.sendto(pkt, self.addr)
             try:
-                ack_pkt, _ = self.sock.recvfrom(MAX_DATA_SIZE)
+                ack_pkt, _ = self.sock.recvfrom(1024)
                 ack_type, ack_seq, _ = self._parse_header(ack_pkt)
                 if ack_type == TYPE_ACK and ack_seq == self.seq:
                     print(f"[RDT] ACK recibido: {ack_seq} para SEQ: {self.seq}")
@@ -40,7 +40,7 @@ class StopAndWaitRDT:
         """Recibe un fragmento de datos válido y envía ACK"""
         while True:
             try:
-                pkt, addr = self.sock.recvfrom(MAX_DATA_SIZE)
+                pkt, addr = self.sock.recvfrom(1024)
                 pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
                 data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
 
