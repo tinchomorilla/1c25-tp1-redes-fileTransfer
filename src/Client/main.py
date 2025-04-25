@@ -5,13 +5,13 @@ def main():
     args = parse_arguments()  
 
     # Instancia del cliente
-    client = Client(args.host, args.port, args.protocol)
+    client = Client(args.addr, args.port, args.protocol)
 
     # Ejecutar el comando correspondiente
     if args.command == "upload":
-        client.upload(args.src, args.name)
+        client.upload(args.filepath, args.filename)
     elif args.command == "download":
-        client.download(args.name, args.dst)
+        client.download(args.filename, args.filepath)
     else:
         print("Comando no reconocido.")
         exit(1)

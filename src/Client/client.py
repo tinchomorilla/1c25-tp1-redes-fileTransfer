@@ -7,7 +7,6 @@ sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 from src.RDT.stop_and_wait import MAX_DATA_SIZE, StopAndWaitRDT
 
 
-
 class Client:
     def __init__(self, server_addr: str, server_port: int, protocol: str):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -17,14 +16,14 @@ class Client:
             protocol  # Protocolo de recuperación de errores (e.g., Stop-and-Wait)
         )
 
-    def upload(self, src: str, name: str):
+    def upload(self, src: str, filename: str):
         # Inicializar RDT
         rdt = StopAndWaitRDT(
             self.socket, addr=(self.server_addr, self.server_port), is_sender=True
         )
 
         # Enviar comando inicial UPLOAD <filename>
-        init_msg = f"UPLOAD|{name}".encode()
+        init_msg = f"UPLOAD|{filename.strip()}".encode()
         rdt.send(init_msg)
 
         # Abrir archivo y fragmentar
@@ -37,7 +36,7 @@ class Client:
 
         # Enviar marcador de fin de transmisión
         rdt.send(b"__UPLOAD_DONE__")
-        print(f"[CLIENT] Archivo '{src}' enviado como '{name}'")
+        print(f"[CLIENT] Archivo '{src}' enviado como '{filename}'")
 
         # Cerrar socket
         self.socket.close()
