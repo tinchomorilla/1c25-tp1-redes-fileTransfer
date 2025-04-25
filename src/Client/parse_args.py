@@ -11,16 +11,16 @@ def parse_arguments():
     # Subcomando: upload
     upload_parser = subparsers.add_parser("upload", help="Subir un archivo al servidor")
     upload_parser.add_argument(
-        "-H", "--host", required=True, help="Dirección IP del servidor"
+        "-H", "--addr", required=True, help="Dirección IP del servidor"
     )
     upload_parser.add_argument(
         "-p", "--port", type=int, required=True, help="Puerto del servidor"
     )
     upload_parser.add_argument(
-        "-s", "--src", required=True, help="Ruta del archivo fuente"
+        "-s", "--filepath", required=True, help="Ruta del archivo fuente"
     )
     upload_parser.add_argument(
-        "-n", "--name", required=True, help="Nombre del archivo en el servidor"
+        "-n", "--filename", required=True, help="Nombre del archivo en el servidor"
     )
     upload_parser.add_argument(
         "-r", "--protocol", required=True, help="Protocolo de recuperación de errores"
@@ -31,16 +31,16 @@ def parse_arguments():
         "download", help="Descargar un archivo del servidor"
     )
     download_parser.add_argument(
-        "-H", "--host", required=True, help="Dirección IP del servidor"
+        "-H", "--addr", required=True, help="Dirección IP del servidor"
     )
     download_parser.add_argument(
         "-p", "--port", type=int, required=True, help="Puerto del servidor"
     )
     download_parser.add_argument(
-        "-d", "--dst", required=True, help="Ruta de destino para guardar el archivo"
+        "-d", "--filepath", required=True, help="Ruta de destino para guardar el archivo"
     )
     download_parser.add_argument(
-        "-n", "--name", required=True, help="Nombre del archivo en el servidor"
+        "-n", "--filename", required=True, help="Nombre del archivo en el servidor"
     )
     download_parser.add_argument(
         "-r", "--protocol", required=True, help="Protocolo de recuperación de errores"
