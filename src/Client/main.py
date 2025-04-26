@@ -1,5 +1,5 @@
-from client import Client
-from src.Client.parse_args import parse_arguments  
+from parse_args import parse_arguments  # pylint: disable=import-error
+from client import Client  # pylint: disable=import-error
 
 def main():
     args = parse_arguments()  
