@@ -1,6 +1,31 @@
-# TP1 - Fragmentación IPv4 - Sistemas Distribuidos (75.43)
+# TP1 - Sistemas Distribuidos (75.43)
 
-## Objetivo
+## RDT en cliente/servidor
+
+### Objetivo
+
+### RDT con Stop and Wait 
+
+#### Como probar el codigo
+
+- Ejecutar el servidor
+```sh
+python3 start_server.py -H 127.0.0.1 -p 9000 -s ./downloads
+```
+
+- Ejecutar el cliente
+```sh
+python3 upload.py -H 127.0.0.1 -p 9000 -s ./uploads/momo.jpeg -n copia4.jpeg
+```
+
+- Ejecutar stress test
+```sh
+python3 stress_test.py
+```
+
+## Fragmentación IPv4 
+
+### Objetivo
 
 Comprobar empíricamente:
 - El proceso de **fragmentación IPv4**.
