@@ -16,51 +16,42 @@ TIMEOUT = 10.0  # segundos
 MAX_DATA_SIZE = 1024 - HEADER_SIZE
 
 class StopAndWaitRDT:
-    def __init__(self, sock: socket.socket, addr=None, is_sender=True):
+    def __init__(self, sock: socket.socket, addr=None, queue=None, is_sender=True):
         self.sock = sock
         self.addr = addr
+        self.queue = queue  # <-- la cola de paquetes entrantes
         self.is_sender = is_sender
         self.seq = 0
-        self.sock.settimeout(TIMEOUT)
+        self.timeout = 10.0  # podemos manejar timeout manual si queremos
 
-    def send(self, data: bytes, pkt_type=TYPE_DATA):
-        """Envia un fragmento de datos y espera su ACK"""
+    def send(self, data: bytes):
         while True:
-            pkt = self._make_packet(pkt_type, self.seq, data)
-            print(f"[RDT] Enviando paquete tipo {pkt_type}, SEQ: {self.seq}, longitud: {len(data)}")
+            pkt = self._make_packet(TYPE_DATA, self.seq, data)
             self.sock.sendto(pkt, self.addr)
             try:
+                self.sock.settimeout(self.timeout)
                 ack_pkt, ack_addr = self.sock.recvfrom(1024)
                 ack_type, ack_seq, _ = self._parse_header(ack_pkt)
-                if ack_type == TYPE_ACK and ack_seq == self.seq:
-                    print(f"[RDT] ACK recibido: {ack_seq} para SEQ: {self.seq}")
+                if ack_type == TYPE_ACK and ack_seq == self.seq and ack_addr == self.addr:
                     self.seq ^= 1
                     return
             except socket.timeout:
-                print("[RDT] Timeout esperando ACK, reintentando...")
-
-    def recv(self) -> tuple[bytes, tuple]:
-        """Recibe un fragmento válido y envía ACK si corresponde"""
-        while True:
-            try:
-                pkt, addr = self.sock.recvfrom(1024)
-                if self.addr is not None and addr != self.addr:
-                    continue  # Ignorar paquetes que no son del cliente esperado
-
-                pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
-                data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
-
-                if pkt_type in [TYPE_DATA, TYPE_INIT, TYPE_READY, TYPE_INIT_ACK]:
-                    if pkt_seq == self.seq:
-                        ack = self._make_packet(TYPE_ACK, self.seq, b'')
-                        self.sock.sendto(ack, addr)
-                        self.seq ^= 1
-                        return data, addr
-                    else:
-                        dup_ack = self._make_packet(TYPE_ACK, self.seq ^ 1, b'')
-                        self.sock.sendto(dup_ack, addr)
-            except socket.timeout:
                 continue
+
+    def recv(self) -> bytes:
+        while True:
+            pkt = self.queue.get()  # ahora leemos de la queue
+            pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
+            data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
+
+            if pkt_type == TYPE_DATA and pkt_seq == self.seq:
+                ack = self._make_packet(TYPE_ACK, self.seq, b'')
+                self.sock.sendto(ack, self.addr)
+                self.seq ^= 1
+                return data
+            else:
+                dup_ack = self._make_packet(TYPE_ACK, self.seq ^ 1, b'')
+                self.sock.sendto(dup_ack, self.addr)
 
     def _make_packet(self, pkt_type: int, seq: int, data: bytes) -> bytes:
         header = struct.pack(HEADER_FMT, pkt_type, seq, len(data))

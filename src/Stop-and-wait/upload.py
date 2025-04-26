@@ -1,40 +1,32 @@
 import argparse
 import os
 import socket
-from rdt import StopAndWaitRDT, MAX_DATA_SIZE, TYPE_INIT, TYPE_READY
+from rdt import StopAndWaitRDT, MAX_DATA_SIZE
 
-# Comando especial para señalar fin de archivo
-DONE_MARKER = b'_UPLOAD_DONE_'
+DONE_MARKER = b'UPLOAD_DONE'
 
 def main():
-    parser = argparse.ArgumentParser(description="Upload a file to the server using Stop & Wait RDT.")
+    parser = argparse.ArgumentParser(description="Upload a file to the server using StopAndWaitRDT.")
     parser.add_argument("-H", "--host", required=True, help="Server IP address")
     parser.add_argument("-p", "--port", required=True, type=int, help="Server port")
     parser.add_argument("-s", "--src", required=True, help="Source file path")
     parser.add_argument("-n", "--name", required=True, help="Target filename on server")
-    parser.add_argument("-r", "--protocol", default="stop_and_wait", help="Recovery protocol (ignored for now)")
     args = parser.parse_args()
 
     server_addr = (args.host, args.port)
 
-    # Crear socket UDP
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    # Inicializar RDT
     rdt = StopAndWaitRDT(sock, addr=server_addr, is_sender=True)
 
-    # Paso 1: Enviar INIT
+    print(f"[CLIENT] Conectando a {server_addr}...")
+
+    # Paso 1: Enviar nombre de archivo
     init_msg = f"UPLOAD|{args.name}".encode()
-    rdt.send(init_msg, pkt_type=TYPE_INIT)
+    rdt.send(init_msg)
+    print(f"[CLIENT] Nombre de archivo enviado: {args.name}")
 
-    # Paso 2: Esperar ACK del INIT
-    print("[CLIENT] Esperando INIT_ACK...")
-    _, _ = rdt.recv()  # ACK del INIT
-
-    # Paso 3: Enviar READY
-    rdt.send(b"READY", pkt_type=TYPE_READY)
-
-    # Paso 4: Enviar archivo fragmentado
+    # Paso 2: Enviar contenido del archivo
     with open(args.src, "rb") as f:
         while True:
             chunk = f.read(MAX_DATA_SIZE)
@@ -42,11 +34,10 @@ def main():
                 break
             rdt.send(chunk)
 
-    # Paso 5: Enviar marcador de fin de transmisión
+    # Paso 3: Enviar marcador de fin
     rdt.send(DONE_MARKER)
-    print(f"[CLIENT] Archivo '{args.src}' enviado como '{args.name}'")
 
-    sock.close()
+    print(f"[CLIENT] Archivo '{args.src}' enviado correctamente.")
 
 if __name__ == "__main__":
     main()
