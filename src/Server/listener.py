@@ -3,6 +3,7 @@ from os.path import abspath, dirname
 import threading
 from src.RDT.stop_and_wait import StopAndWaitRDT
 from src.Server.client_handler import ClientHandler
+
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 
 import queue
@@ -20,7 +21,9 @@ class Listener:
         while True:
             data, addr = self.sock.recvfrom(1024)
             with lock:
+                print(f"[SERVER] Paquete recibido de {addr}")
                 if addr not in self.handlers:
+                    print(f"[SERVER] Nuevo cliente conectado: {addr}")
                     q = queue.Queue()
                     self.handlers[addr] = q
                     threading.Thread(

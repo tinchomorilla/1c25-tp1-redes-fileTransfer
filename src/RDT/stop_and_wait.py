@@ -1,6 +1,6 @@
 import socket
 import struct
-import time
+
 
 # Tipos de mensaje
 TYPE_DATA = 0
@@ -32,6 +32,7 @@ class StopAndWaitRDT:
                 self.sock.settimeout(self.timeout)
                 ack_pkt, ack_addr = self.sock.recvfrom(1024)
                 ack_type, ack_seq, _ = self._parse_header(ack_pkt)
+                print(f"[RDT] ACK recibido: {ack_type}")
                 if ack_type == TYPE_ACK and ack_seq == self.seq and ack_addr == self.addr:
                     self.seq ^= 1
                     return
@@ -41,6 +42,7 @@ class StopAndWaitRDT:
     def recv(self) -> bytes:
         while True:
             pkt = self.queue.get()  # ahora leemos de la queue
+            print(f"[RDT] Paquete desencolado de: {self.addr}")
             pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
             data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
 
