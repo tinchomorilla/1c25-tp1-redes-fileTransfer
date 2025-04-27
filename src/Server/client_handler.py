@@ -4,18 +4,13 @@ import threading
 DONE_MARKER = b"__UPLOAD_DONE__"
 lock = threading.Lock()
 
+
 class ClientHandler:
     def __init__(self, rdt, storage_dir):
         self.rdt = rdt
         self.storage_dir = storage_dir  # Directorio de almacenamiento en el servidor
-      
 
-        
     def handle(self):
-        """Maneja la lógica de comunicación con un cliente."""
-        self._receive_file()
-
-    def _receive_file(self):
         """Lógica para recibir un archivo desde un cliente."""
         init_msg = self.rdt.recv()
         if not init_msg.startswith(b"UPLOAD|"):
@@ -32,4 +27,3 @@ class ClientHandler:
                 f.write(data)
 
         print(f"[SERVER] Archivo recibido correctamente: {filepath}")
-       
