@@ -18,12 +18,15 @@ class Listener:
 
     def listen(self, storage_dir):
         """Escucha conexiones entrantes y delega el manejo a handle_client."""
+        print(f"[LISTENER] LISTENER INICIADO")
         while True:
+            print(f"[LISTENER] Esperando paquetes...")
             data, addr = self.sock.recvfrom(1024)
+            print(f"[LISTENER] Paquete recibido de {addr}")
             with lock:
-                print(f"[SERVER] Paquete recibido de {addr}")
+                print(f"[LISTENER] Paquete recibido de {addr}")
                 if addr not in self.handlers:
-                    print(f"[SERVER] Nuevo cliente conectado: {addr}")
+                    print(f"[LISTENER] Nuevo cliente conectado: {addr}")
                     q = queue.Queue()
                     self.handlers[addr] = q
                     threading.Thread(
@@ -40,7 +43,7 @@ class Listener:
             client = ClientHandler(rdt, storage_dir)
             client.handle()
         except Exception as e:
-            print(f"[SERVER] Error procesando cliente {addr}: {e}")
+            print(f"[LISTENER] Error procesando cliente {addr}: {e}")
         finally:
             with lock:
                 if addr in self.handlers:

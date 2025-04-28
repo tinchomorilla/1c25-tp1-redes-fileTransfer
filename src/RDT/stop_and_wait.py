@@ -28,6 +28,7 @@ class StopAndWaitRDT:
         while True:
             pkt = self._make_packet(TYPE_DATA, self.seq, data)
             self.sock.sendto(pkt, self.addr)
+            print(f"[RDT] Paquete enviado: {self.addr}")
             try:
                 self.sock.settimeout(self.timeout)
                 ack_pkt, ack_addr = self.sock.recvfrom(1024)
