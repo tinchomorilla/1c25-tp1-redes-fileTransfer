@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -46,4 +47,21 @@ def parse_arguments():
         "-r", "--protocol", required=True, help="Protocolo de recuperación de errores"
     )
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    # Validar que todos los argumentos requeridos estén presentes
+    if args.command == "upload":
+        required_args = ["addr", "port", "filepath", "filename", "protocol"]
+    elif args.command == "download":
+        required_args = ["addr", "port", "filepath", "filename", "protocol"]
+    else:
+        parser.print_help()
+        sys.exit("Error: Debes especificar un comando válido ('upload' o 'download').")
+
+    # Verificar que todos los argumentos requeridos no sean None
+    missing_args = [arg for arg in required_args if getattr(args, arg) is None]
+    if missing_args:
+        parser.print_help()
+        sys.exit(f"Error: Faltan los siguientes argumentos requeridos: {', '.join(missing_args)}")
+
+    return args
