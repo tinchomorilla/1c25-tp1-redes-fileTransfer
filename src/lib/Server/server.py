@@ -2,7 +2,7 @@ import os
 import socket
 import sys
 from os.path import abspath, dirname
-from src.Server.listener import Listener
+from lib.Server.listener import Listener
 # Agregar el directorio raíz del proyecto al sys.path
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 

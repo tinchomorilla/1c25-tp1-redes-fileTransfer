@@ -1,8 +1,8 @@
 import sys
 from os.path import abspath, dirname
 import threading
-from src.RDT.stop_and_wait import StopAndWaitRDT
-from src.Server.client_handler import ClientHandler
+from lib.RDT.stop_and_wait import StopAndWaitRDT
+from lib.Server.client_handler import ClientHandler
 
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 

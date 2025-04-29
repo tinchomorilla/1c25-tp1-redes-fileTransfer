@@ -1,6 +1,35 @@
-# TP1 - Fragmentación IPv4 - Sistemas Distribuidos (75.43)
+# TP1 -  - Sistemas Distribuidos (75.43)
 
-## Objetivo
+## Aplicacion de File Transfer entre hosts Cliente y Servidor
+
+## Dependencias
+
+- Instalar openvswitch y xterm
+```sh
+sudo apt update
+sudo apt install openvswitch-testcontroller
+sudo apt install xterm
+sudo apt install mininet
+```
+
+## Ejecutando el proyecto
+
+- Para correr el script de la topologia en mininet
+```sh
+sudo python3 src/topo.py
+```
+
+- Ejecutar el servidor
+```sh
+python3 src/Server/start_server.py -H 127.0.0.1 -p 9000 -s src/Server/downloads
+```
+
+- Ejecutar el cliente
+```sh
+python3 src/Client/upload.py -H 127.0.0.1 -p 9000 -s src/Client/uploads/momo.jpeg -n copia4.jpeg
+```
+
+## Anexo, Fragmentación IPv4: Objetivo
 
 Comprobar empíricamente:
 - El proceso de **fragmentación IPv4**.
@@ -133,5 +162,3 @@ Agregá aquí capturas de:
 - RFC 791 - Internet Protocol
 - `man iperf`, `man ping`
 - https://wiki.wireshark.org/IPv4
-
-
