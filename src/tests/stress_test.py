@@ -4,8 +4,8 @@ import string
 import subprocess
 
 SERVER_IP = "127.0.0.1"
-SERVER_PORT = 9001
-UPLOAD_SRC = "/home/tincho/Documents/Facultad/redes/tps_redes/src/Client/uploads/momo.jpeg"  # El archivo que querés subir
+SERVER_PORT = 9000
+UPLOAD_SRC = "./src/lib/Client/uploads/momo.jpeg"  # El archivo que querés subir
 NUM_CLIENTS = 5  # Número de clientes simultáneos
 
 
@@ -20,8 +20,7 @@ def upload_client(target_name):
     subprocess.run(
         [
             "python3",
-            "src/Client/main.py",
-            "upload",
+            "src/upload.py",
             "-H",
             SERVER_IP,
             "-p",
@@ -31,7 +30,7 @@ def upload_client(target_name):
             "-n",
             target_name,
             "-r",
-            "stop-and-wait",
+            "stop_and_wait",
         ],
         check=True,
     )

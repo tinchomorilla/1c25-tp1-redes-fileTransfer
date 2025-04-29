@@ -1,3 +1,4 @@
+import time
 from mininet.net import Mininet
 from mininet.node import Controller
 from mininet.cli import CLI
@@ -24,6 +25,9 @@ def customTopo():
 
     print("*** Starting network")
     net.start()
+
+    print("*** SLEEPING 10 SECONDS TO START WIRESHARK")
+    time.sleep(10)
 
     print("*** Launching terminals with commands")
 
