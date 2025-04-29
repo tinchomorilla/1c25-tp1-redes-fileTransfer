@@ -4,7 +4,7 @@ from os.path import abspath, dirname
 
 # Agregar el directorio raíz del proyecto al sys.path
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
-from src.RDT.stop_and_wait import MAX_DATA_SIZE, StopAndWaitRDT
+from lib.RDT.stop_and_wait import MAX_DATA_SIZE, StopAndWaitRDT
 
 
 class Client:

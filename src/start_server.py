@@ -1,10 +1,10 @@
 import sys
 from os.path import abspath, dirname
+from lib.Server.server import Server
+from lib.Server.parse_args import parse_arguments
 # Agregar el directorio raíz del proyecto al sys.path
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 
-from src.Server.server import Server
-from src.Server.parse_args import parse_arguments
 
 def main():
     args = parse_arguments()
