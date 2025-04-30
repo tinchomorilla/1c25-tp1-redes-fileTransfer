@@ -1,7 +1,6 @@
 import socket
 import struct
 
-
 # Tipos de mensaje
 TYPE_DATA = 0
 TYPE_ACK = 1
@@ -16,13 +15,12 @@ TIMEOUT = 10.0  # segundos
 MAX_DATA_SIZE = 1024 - HEADER_SIZE
 
 class StopAndWaitRDT:
-    def __init__(self, sock: socket.socket, addr=None, queue=None, is_sender=True):
+    def __init__(self, sock: socket.socket, addr=None, queue=None):
         self.sock = sock
         self.addr = addr
         self.queue = queue  # <-- la cola de paquetes entrantes
-        self.is_sender = is_sender
         self.seq = 0
-        self.timeout = 10.0  # podemos manejar timeout manual si queremos
+        self.timeout = TIMEOUT
 
     def send(self, data: bytes):
         while True:
@@ -43,6 +41,23 @@ class StopAndWaitRDT:
     def recv(self) -> bytes:
         while True:
             pkt = self.queue.get()  # ahora leemos de la queue
+            print(f"[RDT] Paquete desencolado de: {self.addr}")
+            pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
+            data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
+
+            if pkt_type == TYPE_DATA and pkt_seq == self.seq:
+                ack = self._make_packet(TYPE_ACK, self.seq, b'')
+                self.sock.sendto(ack, self.addr)
+                self.seq ^= 1
+                return data
+            else:
+                dup_ack = self._make_packet(TYPE_ACK, self.seq ^ 1, b'')
+                self.sock.sendto(dup_ack, self.addr)
+    
+    def recv_client(self) -> bytes:
+        while True:
+            # pkt = self.queue.get()  # ahora leemos de la queue
+            pkt, addr = self.sock.recvfrom(1024)
             print(f"[RDT] Paquete desencolado de: {self.addr}")
             pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
             data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
