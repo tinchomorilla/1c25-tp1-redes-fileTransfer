@@ -35,8 +35,13 @@ python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.j
 ```
 
 - Correr tests
+  - Upload
 ```sh
-python3 src/tests/stress_test.py 
+python3 src/lib/Tests/upload_stress_test.py 
+```
+  - Download
+```sh
+python3 src/lib/Tests/download_stress_test.py 
 ```
 
 ## Anexo, Fragmentación IPv4: Objetivo
