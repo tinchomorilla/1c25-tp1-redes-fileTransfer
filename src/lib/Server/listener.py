@@ -1,3 +1,4 @@
+import socket
 import sys
 from os.path import abspath, dirname
 import threading
@@ -21,21 +22,25 @@ class Listener:
         print(f"[LISTENER] LISTENER INICIADO")
         while True:
             print(f"[LISTENER] Esperando paquetes...")
-            data, addr = self.sock.recvfrom(1024)
-            print(f"[LISTENER] Paquete recibido de {addr}")
-            with lock:
+            try:
+                data, addr = self.sock.recvfrom(1024)
                 print(f"[LISTENER] Paquete recibido de {addr}")
-                if addr not in self.handlers:
-                    print(f"[LISTENER] Nuevo cliente conectado: {addr}")
-                    q = queue.Queue()
-                    self.handlers[addr] = q
-                    threading.Thread(
-                        target=self.handle_client,
-                        args=(self.sock, addr, q, storage_dir),
-                        daemon=True,
-                    ).start()
+                with lock:
+                    print(f"[LISTENER] ANTES DEL IF ADDR")
+                    if addr not in self.handlers:
+                        print(f"[LISTENER] Nuevo cliente conectado: {addr}")
+                        q = queue.Queue()
+                        self.handlers[addr] = q
+                        threading.Thread(
+                            target=self.handle_client,
+                            args=(self.sock, addr, q, storage_dir),
+                            daemon=True,
+                        ).start()
 
-                self.handlers[addr].put(data)
+                    self.handlers[addr].put(data)
+            except socket.timeout:
+                print(f"[LISTENER] Timeout alcanzado, continuando...")
+                continue
 
     def handle_client(self, sock, addr, q, storage_dir):
         try:
