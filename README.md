@@ -29,6 +29,10 @@ python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads
 ```sh
 python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r stop_and_wait
 ```
+  - Download
+```sh
+python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r stop_and_wait
+```
 
 - Correr tests
 ```sh
