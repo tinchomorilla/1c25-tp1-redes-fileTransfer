@@ -21,7 +21,7 @@ class Client:
     def upload(self, src: str, filename: str):
         # Inicializar RDT
         rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port), is_sender=True
+            self.socket, addr=(self.server_addr, self.server_port)
         )
 
         # Enviar comando inicial UPLOAD <filename>
@@ -46,7 +46,8 @@ class Client:
     def download(self, dst: str, name: str):
         # Inicializar RDT
         rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port))
+            self.socket, addr=(self.server_addr, self.server_port)
+        )
 
         # Enviar comando inicial DOWNLOAD <filename>
         init_msg = f"DOWNLOAD|{name.strip()}".encode()
@@ -55,7 +56,7 @@ class Client:
         # Abrir archivo para escritura
         with open(dst, "wb") as f:
             while True:
-                chunk = rdt.recv_client()
+                chunk = rdt.recv()
                 if chunk == DOWNLOAD_MARKER:
                     break
                 f.write(chunk)
