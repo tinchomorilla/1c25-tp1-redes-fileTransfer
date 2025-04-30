@@ -22,4 +22,4 @@ class Server:
         print(f"[SERVER] Escuchando en {self.host}:{self.port}")
 
         listener = Listener(self.sock)
-        listener.listen(self.storage_dir)
+        listener.listen(self.storage_dir, self.protocol)
