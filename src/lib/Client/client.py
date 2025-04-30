@@ -14,19 +14,13 @@ class Client:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_addr = server_addr
         self.server_port = server_port
-        self.protocol = (
-            protocol  # Protocolo de recuperación de errores (e.g., Stop-and-Wait)
-        )
+        self.rdt = self._initialize_rdt(protocol)
 
     def upload(self, src: str, filename: str):
-        # Inicializar RDT
-        rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port)
-        )
 
         # Enviar comando inicial UPLOAD <filename>
         init_msg = f"UPLOAD|{filename.strip()}".encode()
-        rdt.send(init_msg)
+        self.rdt.send(init_msg)
 
         # Abrir archivo y fragmentar
         with open(src, "rb") as f:
@@ -34,29 +28,24 @@ class Client:
                 chunk = f.read(MAX_DATA_SIZE)
                 if not chunk:
                     break
-                rdt.send(chunk)
+                self.rdt.send(chunk)
 
         # Enviar marcador de fin de transmisión
-        rdt.send(UPLOAD_MARKER)
+        self.rdt.send(UPLOAD_MARKER)
         print(f"[CLIENT] Archivo '{src}' enviado como '{filename}'")
 
         # Cerrar socket
         self.socket.close()
 
     def download(self, dst: str, name: str):
-        # Inicializar RDT
-        rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port)
-        )
-
         # Enviar comando inicial DOWNLOAD <filename>
         init_msg = f"DOWNLOAD|{name.strip()}".encode()
-        rdt.send(init_msg)
+        self.rdt.send(init_msg)
 
         # Abrir archivo para escritura
         with open(dst, "wb") as f:
             while True:
-                chunk = rdt.recv()
+                chunk = self.rdt.recv()
                 if chunk == DOWNLOAD_MARKER:
                     break
                 f.write(chunk)
@@ -65,3 +54,9 @@ class Client:
 
         # Cerrar socket
         self.socket.close()
+
+    def _initialize_rdt(self, protocol: str):
+        if protocol == "stop_and_wait":
+            return StopAndWaitRDT(self.socket, addr=(self.server_addr, self.server_port))
+        else:
+            return GoBackNRDT()
