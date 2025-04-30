@@ -6,6 +6,8 @@ from os.path import abspath, dirname
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 from lib.RDT.stop_and_wait import MAX_DATA_SIZE, StopAndWaitRDT
 
+DOWNLOAD_MARKER = b"__DOWNLOAD_DONE__"
+UPLOAD_MARKER = b"__UPLOAD_DONE__"
 
 class Client:
     def __init__(self, server_addr: str, server_port: int, protocol: str):
@@ -35,11 +37,30 @@ class Client:
                 rdt.send(chunk)
 
         # Enviar marcador de fin de transmisión
-        rdt.send(b"__UPLOAD_DONE__")
+        rdt.send(UPLOAD_MARKER)
         print(f"[CLIENT] Archivo '{src}' enviado como '{filename}'")
 
         # Cerrar socket
         self.socket.close()
 
-    def download(self, name: str, dst: str):
-        pass
+    def download(self, dst: str, name: str):
+        # Inicializar RDT
+        rdt = StopAndWaitRDT(
+            self.socket, addr=(self.server_addr, self.server_port))
+
+        # Enviar comando inicial DOWNLOAD <filename>
+        init_msg = f"DOWNLOAD|{name.strip()}".encode()
+        rdt.send(init_msg)
+
+        # Abrir archivo para escritura
+        with open(dst, "wb") as f:
+            while True:
+                chunk = rdt.recv_client()
+                if chunk == DOWNLOAD_MARKER:
+                    break
+                f.write(chunk)
+
+        print(f"[CLIENT] Archivo '{name}' descargado como '{dst}'")
+
+        # Cerrar socket
+        self.socket.close()
