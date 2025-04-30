@@ -1,5 +1,6 @@
 import os
 import threading
+from lib.RDT.stop_and_wait import MAX_DATA_SIZE
 
 DONE_MARKER = b"__UPLOAD_DONE__"
 lock = threading.Lock()
@@ -50,7 +51,7 @@ class ClientHandler:
 
         with open(filepath, "rb") as f:
             while True:
-                chunk = f.read(1024)
+                chunk = f.read(MAX_DATA_SIZE)
                 if not chunk:
                     break
                 self.rdt.send(chunk)
