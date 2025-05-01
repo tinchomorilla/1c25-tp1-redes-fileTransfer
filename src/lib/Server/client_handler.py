@@ -1,8 +1,7 @@
 import os
 import threading
-from lib.RDT.stop_and_wait import MAX_DATA_SIZE
+from lib.constants import *
 
-DONE_MARKER = b"__UPLOAD_DONE__"
 lock = threading.Lock()
 
 
@@ -32,7 +31,7 @@ class ClientHandler:
         with open(filepath, "wb") as f:
             while True:
                 data = self.rdt.recv()
-                if data == DONE_MARKER:
+                if data == UPLOAD_DONE_MARKER:
                     break
                 print(f"[CLIENT_HANDLER] Escribiendo datos...")
                 f.write(data)
@@ -53,8 +52,10 @@ class ClientHandler:
             while True:
                 chunk = f.read(MAX_DATA_SIZE)
                 if not chunk:
+                    print(f"[SERVER] Fin de archivo alcanzado: {filepath}")
                     break
                 self.rdt.send(chunk)
+                f.flush()
 
-        self.rdt.send(b"__DOWNLOAD_DONE__")
+        self.rdt.send(DOWNLOAD_DONE_MARKER)
         print(f"[SERVER] Archivo enviado correctamente: {filepath}")

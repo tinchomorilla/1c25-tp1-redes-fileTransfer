@@ -1,18 +1,6 @@
 import socket
 import struct
-
-# Tipos de mensaje
-TYPE_DATA = 0
-TYPE_ACK = 1
-TYPE_INIT = 2
-TYPE_INIT_ACK = 3
-TYPE_READY = 4
-
-# Formato del encabezado: !BBH = (tipo, secuencia, longitud)
-HEADER_FMT = "!BBH"
-HEADER_SIZE = struct.calcsize(HEADER_FMT)
-TIMEOUT = 10.0  # segundos
-MAX_DATA_SIZE = 1024 - HEADER_SIZE
+from lib.constants import *
 
 class StopAndWaitRDT:
     def __init__(self, sock: socket.socket, addr=None, queue=None):
@@ -21,15 +9,14 @@ class StopAndWaitRDT:
         self.queue = queue  # <-- la cola de paquetes entrantes
         self.seq = 0
         self.timeout = TIMEOUT
+        self.sock.settimeout(self.timeout)
 
     def send(self, data: bytes):
         while True:
             pkt = self._make_packet(TYPE_DATA, self.seq, data)
             self.sock.sendto(pkt, self.addr)
-            print(f"[RDT] Paquete enviado: {self.addr}")
+            print(f"[RDT] Paquete enviado: {self.addr} de SEQ {self.seq}")
             try:
-
-                self.sock.settimeout(self.timeout)
                 print(f"[RDT] Esperando ACK...")
                 ack_pkt, ack_addr = self.sock.recvfrom(1024)
                 ack_type, ack_seq, _ = self._parse_header(ack_pkt)
@@ -42,30 +29,23 @@ class StopAndWaitRDT:
 
     def recv(self) -> bytes:
         while True:
-            if self.queue:
-                pkt = self.queue.get()  # ahora leemos de la queue
-                addr = self.addr
-                print(f"[RDT] Paquete desencolado de: {addr}")
-            else:
-                try:
-                    pkt, addr = self.sock.recvfrom(1024)
-                    print(f"[RDT] Paquete recibido de: {addr}")
-                except socket.timeout:
-                    print(f"[RDT] Timeout alcanzado, continuando...")
-                    continue
+            pkt = self.queue.get()  
+            print(f"[RDT] Paquete desencolado de: {self.addr}")
            
             pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
             data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
 
+            print(f"[RDT] Paquete recibido: {pkt_type} de SEQ {pkt_seq} con longitud {pkt_len}")
+
             if pkt_type == TYPE_DATA and pkt_seq == self.seq:
                 ack = self._make_packet(TYPE_ACK, self.seq, b'')
                 print(f"[RDT] ACK enviado: {self.seq}")
-                self.sock.sendto(ack, addr)
+                self.sock.sendto(ack, self.addr)
                 self.seq ^= 1
                 return data
             else:
                 dup_ack = self._make_packet(TYPE_ACK, self.seq ^ 1, b'')
-                self.sock.sendto(dup_ack, addr)
+                self.sock.sendto(dup_ack, self.addr)
 
     def _make_packet(self, pkt_type: int, seq: int, data: bytes) -> bytes:
         header = struct.pack(HEADER_FMT, pkt_type, seq, len(data))
