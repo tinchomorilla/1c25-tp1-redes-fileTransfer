@@ -21,7 +21,11 @@ class ClientHandler:
         elif init_msg.startswith(b"DOWNLOAD|"):
             self.handle_download(init_msg)
         else:
-            print(f"[CLIENT_HANDLER] Comando no reconocido: {init_msg.decode()}")
+            try:
+                msg = init_msg.decode()
+                print(f"[CLIENT_HANDLER] Comando no reconocido: {msg}")
+            except UnicodeDecodeError:
+                print(f"[CLIENT_HANDLER] Error al decodificar el mensaje: {init_msg}")
 
     def handle_upload(self, init_msg):
         """Lógica para manejar la subida de archivos desde el cliente."""

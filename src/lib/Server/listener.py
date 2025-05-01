@@ -13,8 +13,10 @@ lock = threading.Lock()
 
 
 class Listener:
-    def __init__(self, sock):
+    def __init__(self, sock, addr: str, port: int):
         self.sock = sock
+        self.server_addr = addr
+        self.server_port = port
         self.handlers = {}
 
 
@@ -34,7 +36,7 @@ class Listener:
                         self.handlers[addr] = q
                         threading.Thread(
                             target=self.handle_client,
-                            args=(self.sock, addr, q, storage_dir, protocol),
+                            args=(addr, q, storage_dir, protocol),
                             daemon=True,
                         ).start()
 
