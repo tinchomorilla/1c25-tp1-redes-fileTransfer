@@ -1,18 +1,21 @@
 from lib.Client.client import Client
-from lib.Client.args_parser import parse_arguments
-
+from lib.Client.args_parser import Parser
+from lib.Common.logger import initialize_logger
 
 def main():
-    args = parse_arguments() 
 
-    print("[CLIENT] Argumentos recibidos:")
+    parser = Parser("Flags for upload command")
+    args = parser.parse_args_upload()
+    
+    logger = initialize_logger(args.debug_level, "upload")
 
-    # Instancia del cliente
-    client = Client(args.addr, args.port, args.protocol)
+
+    client = Client(args.host, int(args.port), args.protocol, logger)
 
     
-    print(f"[CLIENT] Subiendo archivo")
+
     client.upload(args.src, args.filename)
+    
    
 
 if __name__ == "__main__":

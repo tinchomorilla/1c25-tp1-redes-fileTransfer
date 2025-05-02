@@ -1,17 +1,15 @@
 from lib.Client.client import Client
-from lib.Client.args_parser import parse_arguments
+from lib.Client.args_parser import Parser, parse_args_download
+from lib.Common.logger import initialize_logger
 
 
 def main():
-    args = parse_arguments() 
-
-    print("[CLIENT] Argumentos recibidos:")
-
-    # Instancia del cliente
-    client = Client(args.addr, args.port, args.protocol)
-
+    parser = Parser("Flags for download command")
+    args = parser.parse_args_download()
     
-    print(f"[CLIENT] Subiendo archivo")
+    logger = initialize_logger(args.debug_level, "download")
+
+    client = Client(args.host, int(args.port), args.protocol, logger)
 
     # filepath = ruta donde se almacenara el archivo localmente
     # filename = nombre del archivo que se encuentra en el servidor

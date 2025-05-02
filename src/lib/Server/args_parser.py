@@ -15,15 +15,9 @@ class Parser:
         self.parser.add_argument("-p", "--port", metavar="port", help="server port")
         self.parser.add_argument("-r", "--protocol", metavar="protocol", help="saw or sr")
 
-    def _add_arguments_upload(self):
+    def _add_arguments_server(self):
         self._add_arguments_shared()
-        self.parser.add_argument("-n", "--filename", help="file name", required=True)
-        self.parser.add_argument("-s", "--src", help="source file path")
-        
-    def _add_arguments_download(self):
-        self._add_arguments_shared()
-        self.parser.add_argument("-n", "--filename", help="file name", required=True)
-        self.parser.add_argument("-d", "--dst", help="destination file path")
+        self.parser.add_argument("-s", "--storage_dir", help="storage dir path")   
 
     def parse_args(self, args):
         if args.quiet:
@@ -38,15 +32,10 @@ class Parser:
         args.debug_level = debug_level
 
         return args     
-
-    def parse_args_upload(self):
-        self._add_arguments_upload()
-        return self._parse()
     
-    def parse_args_download(self):
-        self._add_arguments_download()
+    def parse_args_server(self):
+        self._add_arguments_server()
         return self._parse()
-
 
     def _parse(self):
         args = self.parser.parse_args()
