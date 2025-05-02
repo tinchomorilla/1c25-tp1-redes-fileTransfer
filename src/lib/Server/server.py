@@ -18,7 +18,13 @@ class Server:
     def run(self):
         """Inicializa el servidor y comienza a escuchar conexiones."""
         os.makedirs(self.storage_dir, exist_ok=True)
-        self.sock.bind((self.host, self.port))
+        
+        try:
+            self.sock.bind((self.host, self.port))
+        except socket.error as e:
+            print(f"[SERVER] Error al enlazar el socket: {e}")
+            sys.exit(1)
+
         print(f"[SERVER] Escuchando en {self.host}:{self.port}")
 
         listener = Listener(self.sock)
