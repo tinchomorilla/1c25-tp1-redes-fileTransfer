@@ -14,9 +14,13 @@ sudo apt install mininet
 
 ## Ejecutando el proyecto
 
-- Para correr el script de la topologia en mininet
+- Para correr el script de la topologia en mininet (upload)
 ```sh
-sudo python3 src/lib/mininet/topology.py
+sudo python3 src/lib/Mininet/upload_topology.py
+```
+- Para correr el script de la topologia en mininet (download)
+```sh
+sudo python3 src/lib/Mininet/download_topology.py
 ```
 
 - Ejecutar el servidor
