@@ -14,14 +14,18 @@ sudo apt install mininet
 
 ## Ejecutando el proyecto
 
-- Para correr el script de la topologia en mininet
+- Para correr el script de la topologia en mininet (upload)
 ```sh
-sudo python3 src/lib/mininet/topology.py
+sudo python3 src/lib/Mininet/upload_topology.py
+```
+- Para correr el script de la topologia en mininet (download)
+```sh
+sudo python3 src/lib/Mininet/download_topology.py
 ```
 
 - Ejecutar el servidor
 ```sh
-python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads
+python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r stop_and_wait
 ```
 
 - Ejecutar el cliente
@@ -29,10 +33,19 @@ python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads
 ```sh
 python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r stop_and_wait
 ```
+  - Download
+```sh
+python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r stop_and_wait
+```
 
 - Correr tests
+  - Upload
 ```sh
-python3 src/tests/stress_test.py 
+python3 src/lib/Tests/upload_stress_test.py 
+```
+  - Download
+```sh
+python3 src/lib/Tests/download_stress_test.py 
 ```
 
 ## Anexo, Fragmentación IPv4: Objetivo

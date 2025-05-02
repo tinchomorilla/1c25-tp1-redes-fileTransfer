@@ -12,7 +12,7 @@ def main():
 
     
     print(f"[CLIENT] Subiendo archivo")
-    client.upload(args.filepath, args.filename)
+    client.upload(args.src, args.filename)
    
 
 if __name__ == "__main__":

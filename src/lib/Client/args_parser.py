@@ -1,6 +1,7 @@
 import argparse
 import ipaddress
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Cliente para subir y descargar archivos."
@@ -25,10 +26,13 @@ def parse_arguments():
 
     # Argumentos específicos para upload y download
     parser.add_argument(
-        "-s", "--filepath", help="Si es upload, ruta donde se encuentra el archivo a subir. Si es download, ruta donde se guardará el archivo localmente."
+        "-s", "--src", help="En upload, ruta donde se encuentra el archivo a subir."
     )
     parser.add_argument(
-        "-n", "--filename", help="Si es upload, nombre del archivo con el que se guardara en el servidor. Si es download, nombre del archivo a descargar."
+        "-d", "--dst", help="En download, ruta donde se guardará el archivo localmente."
+    )
+    parser.add_argument(
+        "-n", "--filename", help="Si es upload, nombre del archivo con el que se guardará en el servidor. Si es download, nombre del archivo a descargar."
     )
 
     args = parser.parse_args()
@@ -40,12 +44,15 @@ def parse_arguments():
         parser.error(f"La dirección IP '{args.addr}' no es válida.")
 
     # Validar que los argumentos requeridos estén presentes según el comando
-   
-    if not args.filepath or not args.filename:
-        parser.error("Se requiere --filepath y --filename.")
-    
-    if args.protocol not in ["stop_and_wait", "go_back_n"]:
-        parser.error("Protocolo no soportado. Usa 'stop_and_wait' o 'go_back_n'.")
-
+    if args.src and args.dst:
+        parser.error("No puedes usar --src y --dst al mismo tiempo.")
+    elif args.src:  # Comando upload
+        if not args.filename:
+            parser.error("Para 'upload' se requiere --filename.")
+    elif args.dst:  # Comando download
+        if not args.filename:
+            parser.error("Para 'download' se requiere --filename.")
+    else:
+        parser.error("Debes especificar --src para upload o --dst para download.")
 
     return args
