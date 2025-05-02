@@ -96,11 +96,6 @@ class StopAndWaitRDT:
             pkt_type, pkt_seq, pkt_len = self._parse_header(pkt)
             data = pkt[HEADER_SIZE:HEADER_SIZE + pkt_len]
 
-            if pkt_type == TYPE_INIT_ACK:
-                print(f"[RDT] ACK de inicialización recibido con SEQ={pkt_seq}")
-                self.seq = pkt_seq ^ 1
-                return data
-
             if pkt_type == TYPE_DATA and pkt_seq == self.seq:
                 ack = self._make_packet(TYPE_ACK, self.seq, b'')
                 print(f"[RDT] ACK enviado: {self.seq}")
