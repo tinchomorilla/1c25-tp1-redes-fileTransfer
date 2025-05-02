@@ -1,9 +1,11 @@
 import os
 import threading
-from lib.RDT.stop_and_wait import MAX_DATA_SIZE
+from lib.RDT.stop_and_wait import MAX_DATA_SIZE, TYPE_DATA
 
-DONE_MARKER = b"__UPLOAD_DONE__"
+DOWNLOAD_MARKER = b"__DOWNLOAD_DONE__"
+UPLOAD_MARKER = b"__UPLOAD_DONE__"
 lock = threading.Lock()
+
 
 
 class ClientHandler:
@@ -14,7 +16,7 @@ class ClientHandler:
     def handle(self):
         """Lógica para manejar comandos del cliente."""
         print(f"[CLIENT_HANDLER] Esperando mensaje inicial del cliente...")
-        init_msg = self.rdt.recv()
+        init_msg = self.rdt.recv_server()
 
         if init_msg.startswith(b"UPLOAD|"):
             self.handle_upload(init_msg)
@@ -31,16 +33,19 @@ class ClientHandler:
 
         with open(filepath, "wb") as f:
             while True:
-                data = self.rdt.recv()
-                if data == DONE_MARKER:
+                data = self.rdt.recv_server()
+                if data == UPLOAD_MARKER:
                     break
                 print(f"[CLIENT_HANDLER] Escribiendo datos...")
                 f.write(data)
 
         print(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
 
+
     def handle_download(self, init_msg):
         """Lógica para manejar la descarga de archivos hacia el cliente."""
+        print(f"[CLIENT_HANDLER] Mensaje inicial recibido: {init_msg.decode()}")
+
         filename = init_msg.decode().split("|")[1]
         filepath = os.path.join("./src/lib/Server/downloads", filename)
 
@@ -54,7 +59,8 @@ class ClientHandler:
                 chunk = f.read(MAX_DATA_SIZE)
                 if not chunk:
                     break
-                self.rdt.send(chunk)
+                self.rdt.send(chunk, TYPE_DATA)
 
-        self.rdt.send(b"__DOWNLOAD_DONE__")
+        self.rdt.send(DOWNLOAD_MARKER, TYPE_DATA)
+
         print(f"[SERVER] Archivo enviado correctamente: {filepath}")
