@@ -103,15 +103,16 @@ sudo mn -c
 
 ### Correr el trabajo
 
-#### 1. Ejecutar el script
+#### 1. Ejecutar el script de fragmentación
 
 ```bash
-sudo python3 src/anexo.py
+sudo python3 src/lib/Anexo/fragmentacion.py --mtu 600 --loss 0
 ```
 
 #### 2. Abrir wireshark
 
-Analizar `s2-eth2` para ver la fragmentacion de paquetes.
+Analizar `s1-eth2` y `s3-eth2` para ver la fragmentacion de paquetes. En `s1` se verán los paquetes enviados, como paquetes completos, y en `s3` se verán los paquetes fragmentados.
+
 
 #### 3. Enviar trafico
 
@@ -127,7 +128,62 @@ mininet> h2 iperf -s &
 mininet> h1 iperf -c h2 -l 1400
 ```
 
-El tráfico fue capturado con Wireshark, permitiendo observar fragmentos de paquetes, identificadores IP compartidos, offset de fragmentos y el flag "More Fragments".
+#### Analizar trafico en wireshark
+- Ver como cada paquete aparece fragmentado, de la siguiente forma en `s3-eth2`:
+![alt text](src/lib/Anexo/img/paquete_fragmentado.png)
+- Ver los campos relevantes:
+  - `Identification`: Identificador del paquete.
+  - `Flag MF`: Indica si hay más fragmentos.
+  - `Fragment Offset`: Indica la posición del fragmento en el paquete original.
+  - `IP Len`: Longitud del paquete fragmentado.
+- Comparar como la fragmentacion afecta el trafico en la red. En cada captura de Wireshark hacer `Statistics > Summary` y observar el total de paquetes en la red. Se vera algo del estilo:
+    - En `s1-eth2` hay 941.
+    - En `s3-eth2` hay 2821.
+
+#### 4. Ejecutar el script con lost paquets
+
+```bash
+sudo python3 src/lib/Anexo/fragmentacion.py --mtu 600 --loss 10
+```
+
+#### 5. Abrir wireshark
+
+Analizar `s1-eth2` y `s3-eth2` para ver la fragmentacion de paquetes. En `s1` se verán los paquetes enviados, como paquetes completos, y en `s3` se verán los paquetes fragmentados.
+
+
+#### 6. Enviar trafico
+
+##### UDP
+```bash
+mininet> h2 iperf -s -u &
+mininet> h1 iperf -c h2 -u -l 1400
+```
+
+##### TCP
+```bash
+mininet> h2 iperf -s &
+mininet> h1 iperf -c h2 -l 1400
+```
+
+#### Analizar trafico en wireshark
+
+- Ya vemos desde mininet que hay una perdida de paquetes.
+- Que pasa cuando se pierde un fragmento?
+    - En UDP
+        - Si un fragmento se pierde, el host destino descarta todo el datagrama.
+        - No hay retransmisión.
+        - Vas a ver fragmentos huérfanos: algunos fragmentos de un mismo `ID Datagrama` pero no todos, y no vas a ver la reensamblación.
+        - En iperf se ve pérdida de paquetes reportada (X% datagrams lost).
+        - En la captura se observan múltiples mensajes ICMP con el tipo "Fragment reassembly time exceeded", lo que indica que el host receptor descartó datagramas IP fragmentados debido a la pérdida de alguno del paquete.
+        ![alt text](src/lib/Anexo/img/fragmentos_descartados.png)
+    - En TCP
+        - TCP detecta la pérdida y retransmite todo el datagrama.
+        - En Wireshark se ven reenvíos `TCP Retransmission`, duplicados o retransmisiones completas.
+        - Se puede observar el triple ACK o retransmisión por timeout.
+        - Filtrar retransmisiones
+            - Retransmisiones por perdida o timeout: `tcp.analysis.retransmission`.
+            - Retransmisiones por retransmision rapida `tcp.analysis.fast_retransmission`, se recibieron 3 ACKs duplicados.
+            - Retransmisiones por timeout `tcp.analysis.retransmission && !tcp.analysis.fast_retransmission`.
 
 ### Resultados observados
 1. *Proceso de fragmentación*
@@ -144,6 +200,3 @@ La reducción del MTU implica una mayor cantidad de fragmentos para transmitir l
 
 ### Conclusión
 El experimento permitió verificar de forma práctica cómo funciona la fragmentación en IPv4 y cómo se comportan los protocolos de transporte TCP y UDP ante la pérdida de fragmentos. Se concluye que una MTU reducida no solo causa fragmentación, sino que también incrementa el tráfico de red y puede afectar negativamente la confiabilidad en protocolos no orientados a conexión como UDP.
-
-
-
