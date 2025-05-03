@@ -41,6 +41,7 @@ class FragmentationTopo(Topo):
         if self.loss > 0:
             self.addLink(h2, s3, cls=TCLink, loss=self.loss)
         else:
+            print("No se aplicará pérdida de paquetes en el enlace entre s3 y h2")
             self.addLink(h2, s3)
 
 
