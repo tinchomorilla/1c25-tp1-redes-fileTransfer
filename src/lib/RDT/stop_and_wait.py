@@ -22,7 +22,7 @@ class StopAndWait(Protocol):
                 self.logger.debug(f"Received packet as {ack_packet}")
 
                 if not ack_packet.is_ack() or ack_packet.ack_number != self.sequence_number + 1:
-                    self.logger.error("Received packet is not ack or ack number is not correct")
+                    self.logger.debug("Received packet is not ack or ack number is not correct")
                     return
                 else:
                     self.ack_number = ack_packet.sequence_number + 1
@@ -52,7 +52,7 @@ class StopAndWait(Protocol):
                     self.logger.debug(f"Sent ack as {ack} DE FIN")
                     return packet    
                 elif packet.sequence_number != self.ack_number:
-                    self.logger.error("Ack number is not correct")
+                    self.logger.debug("Ack number is not correct")
                     ack = Packet.new_ack_packet(self.sequence_number, self.ack_number, None)
                     stream.send_to(ack.to_bytes(), self.address)
                     self.logger.debug(f"Sent ack as {ack}")

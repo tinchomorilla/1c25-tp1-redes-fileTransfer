@@ -35,17 +35,17 @@ sudo python3 src/lib/Mininet/upload_topology_multithread.py --r gbn
 ### Para ejecutar cliente o servidor localmente
 - Ejecutar el servidor
 ```sh
-python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r saw
+python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r saw -q
 ```
 
 - Ejecutar el cliente
   - Upload
 ```sh
-python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r saw -v
+python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r saw -q
 ```
   - Download
 ```sh
-python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r saw -v
+python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r saw -q
 ```
 
 - Correr tests

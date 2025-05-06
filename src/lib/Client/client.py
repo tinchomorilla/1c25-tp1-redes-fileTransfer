@@ -12,7 +12,7 @@ from lib.Common.constants import (
     GBN_PROTOCOL,
     UPLOAD,
 )
-
+import time
 # from tqdm import tqdm
 import os
 
@@ -54,6 +54,9 @@ class Client:
         self.rdt.sequence_number = 0
         self.rdt.ack_number = 0
 
+        start_time = time.time()
+        self.logger.info(f"Starting upload of file: {filename}")
+
         with open(src, "rb") as f:
             data = f.read(PAYLOAD_SIZE)
             while data:
@@ -75,8 +78,14 @@ class Client:
             except MaximumRetriesError as e:
                 self.logger.error(f"Exception occurred: {e}")
 
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+
             self.logger.info(f"Upload completed for file: {filename}")
             self.logger.info(f"Total number of packets sent: {total_packets_sent}")
+            self.logger.info(
+                f"Total transfer time: {elapsed_time:.4f} seconds"
+            )
 
     def download(self, dst: str, filename: str):
         try:
