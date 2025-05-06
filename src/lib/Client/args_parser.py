@@ -1,58 +1,59 @@
 import argparse
-import ipaddress
+import logging
+
+from lib.Common.constants import DEFAULT_PROTOCOL, DEFAULT_SERVER_ADDRESS, DEFAULT_SERVER_PORT
+
+class Parser:
+    def __init__(self,description):
+        self.parser = argparse.ArgumentParser(description=description)
+
+    def _add_arguments_shared(self):
+
+        self.parser.add_argument("-v", "--verbose", action="store_true", help="increase output verbosity")
+        self.parser.add_argument("-q", "--quiet", action="store_true", help="decrease output verbosity")
+        self.parser.add_argument("-H", "--host", metavar="addr", help="server IP address")
+        self.parser.add_argument("-p", "--port", metavar="port", help="server port")
+        self.parser.add_argument("-r", "--protocol", metavar="protocol", help="saw or gbn")
+
+    def _add_arguments_upload(self):
+        self._add_arguments_shared()
+        self.parser.add_argument("-n", "--filename", help="file name", required=True)
+        self.parser.add_argument("-s", "--src", help="source file path")
+        
+    def _add_arguments_download(self):
+        self._add_arguments_shared()
+        self.parser.add_argument("-n", "--filename", help="file name", required=True)
+        self.parser.add_argument("-d", "--dst", help="destination file path")
+
+    def parse_args(self, args):
+        if args.quiet:
+            debug_level = logging.INFO
+        elif args.verbose:
+            debug_level = logging.DEBUG
+        else:
+            debug_level = logging.ERROR
+        args.host = DEFAULT_SERVER_ADDRESS if args.host is None else args.host
+        args.port = DEFAULT_SERVER_PORT if args.port is None else args.port
+        args.protocol = DEFAULT_PROTOCOL if args.protocol is None else args.protocol
+        args.debug_level = debug_level
+
+        return args     
+
+    def parse_args_upload(self):
+        self._add_arguments_upload()
+        return self._parse()
+    
+    def parse_args_download(self):
+        self._add_arguments_download()
+        return self._parse()
 
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(
-        description="Cliente para subir y descargar archivos."
-    )
+    def _parse(self):
+        args = self.parser.parse_args()
+        if args.verbose and args.quiet:
+            raise Exception("Verbose and quiet options are not compatible")
+        return self.parse_args(args)
+    
 
-    # Argumentos comunes
-    parser.add_argument(
-        "-v", "--verbose", action="store_true", help="Aumentar la verbosidad de la salida"
-    )
-    parser.add_argument(
-        "-q", "--quiet", action="store_true", help="Reducir la verbosidad de la salida"
-    )
-    parser.add_argument(
-        "-H", "--addr", required=True, help="Dirección IP del servidor"
-    )
-    parser.add_argument(
-        "-p", "--port", type=int, required=True, help="Puerto del servidor"
-    )
-    parser.add_argument(
-        "-r", "--protocol", required=True, help="Protocolo de recuperación de errores"
-    )
 
-    # Argumentos específicos para upload y download
-    parser.add_argument(
-        "-s", "--src", help="En upload, ruta donde se encuentra el archivo a subir."
-    )
-    parser.add_argument(
-        "-d", "--dst", help="En download, ruta donde se guardará el archivo localmente."
-    )
-    parser.add_argument(
-        "-n", "--filename", help="Si es upload, nombre del archivo con el que se guardará en el servidor. Si es download, nombre del archivo a descargar."
-    )
-
-    args = parser.parse_args()
-
-    # Validar que la dirección IP sea válida
-    try:
-        ipaddress.ip_address(args.addr)
-    except ValueError:
-        parser.error(f"La dirección IP '{args.addr}' no es válida.")
-
-    # Validar que los argumentos requeridos estén presentes según el comando
-    if args.src and args.dst:
-        parser.error("No puedes usar --src y --dst al mismo tiempo.")
-    elif args.src:  # Comando upload
-        if not args.filename:
-            parser.error("Para 'upload' se requiere --filename.")
-    elif args.dst:  # Comando download
-        if not args.filename:
-            parser.error("Para 'download' se requiere --filename.")
-    else:
-        parser.error("Debes especificar --src para upload o --dst para download.")
-
-    return args
+   

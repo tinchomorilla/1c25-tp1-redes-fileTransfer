@@ -1,66 +1,98 @@
+import queue
+import socket
+from threading import Thread as thread
 import os
 import threading
-from lib.RDT.stop_and_wait import MAX_DATA_SIZE, TYPE_DATA
+from lib.Errors.exceptions import MaxSizeFileError
+from lib.Packet.packet import Packet
+from lib.RDT.go_back_n import GoBackN
+from lib.RDT.stop_and_wait import StopAndWait
+from lib.RDT.stream_wrapper import StreamWrapper
+from lib.Common.constants import DOWNLOAD, MAX_FILE_SIZE, PAYLOAD_SIZE, SAW_PROTOCOL
 
-DOWNLOAD_MARKER = b"__DOWNLOAD_DONE__"
-UPLOAD_MARKER = b"__UPLOAD_DONE__"
+
 lock = threading.Lock()
 
+class ClientHandler(thread):
+    def __init__(
+        self, 
+        client_address,
+        sequence_number_client,
+        protocol,
+        logger,
+        filename,
+        is_download,
+        storage_dir
+    ):
+        self.address = client_address
+        self.sequence_number_client = sequence_number_client
+        self.stream = StreamWrapper(socket.socket(socket.AF_INET, socket.SOCK_DGRAM), queue.Queue())        
+        self.logger = logger
+        self.filename = filename
+        self.is_download = is_download
+        self.rdt = StopAndWait(self.address, self.logger) if protocol == SAW_PROTOCOL else GoBackN(self.address, self.logger)
+        self.storage_dir = storage_dir
+        thread.__init__(self)
+        
+
+    def run(self):
+        try:
+            self.logger.info(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
+            self.rdt.response_handshake(self.stream, self.address, self.sequence_number_client)
+            self.logger.info(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
+            self.rdt.sequence_number = 0
+            self.rdt.ack_number = 0
+            if self.is_download:
+                self.handle_download()
+            else:
+                self.handle_upload()
+        except Exception as e:
+            self.logger.error(f"[CLIENT_HANDLER] Error en la transferencia: {e}")
 
 
-class ClientHandler:
-    def __init__(self, rdt, storage_dir):
-        self.rdt = rdt
-        self.storage_dir = storage_dir  # Directorio de almacenamiento en el servidor
-
-    def handle(self):
-        """Lógica para manejar comandos del cliente."""
-        print(f"[CLIENT_HANDLER] Esperando mensaje inicial del cliente...")
-        init_msg = self.rdt.recv_server()
-
-        if init_msg.startswith(b"UPLOAD|"):
-            self.handle_upload(init_msg)
-        elif init_msg.startswith(b"DOWNLOAD|"):
-            self.handle_download(init_msg)
-        else:
-            print(f"[CLIENT_HANDLER] Comando no reconocido: {init_msg.decode()}")
-
-    def handle_upload(self, init_msg):
+    def handle_upload(self):
         """Lógica para manejar la subida de archivos desde el cliente."""
-        print(f"[CLIENT_HANDLER] Mensaje inicial recibido: {init_msg.decode()}")
-        filename = init_msg.decode().split("|")[1]
-        filepath = os.path.join(self.storage_dir, filename)
 
-        with open(filepath, "wb") as f:
+        filepath = os.path.join(self.storage_dir, self.filename)
+
+        
+        file_size = os.path.getsize(filepath)
+        if file_size > MAX_FILE_SIZE:
+            raise MaxSizeFileError(f"El archivo {filepath} supera el tamaño máximo permitido de {MAX_FILE_SIZE} bytes")
+        
+        with open(filepath, 'wb') as f:  
             while True:
-                data = self.rdt.recv_server()
-                if data == UPLOAD_MARKER:
+                packet = self.rdt.recv(self.stream)
+                if packet.is_fin():
                     break
-                print(f"[CLIENT_HANDLER] Escribiendo datos...")
-                f.write(data)
+                f.write(packet.get_payload())
 
-        print(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
+        self.logger.info(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
 
 
-    def handle_download(self, init_msg):
+    def handle_download(self):
         """Lógica para manejar la descarga de archivos hacia el cliente."""
-        print(f"[CLIENT_HANDLER] Mensaje inicial recibido: {init_msg.decode()}")
-
-        filename = init_msg.decode().split("|")[1]
-        filepath = os.path.join("./src/lib/Server/downloads", filename)
+        
+        filepath = os.path.join(self.storage_dir, self.filename)
 
         if not os.path.exists(filepath):
-            print(f"[SERVER] Archivo no encontrado: {filepath}")
-            # Opcional: enviar mensaje de error al cliente
-            return
+            raise FileNotFoundError(f"El archivo {filepath} no existe")
 
         with open(filepath, "rb") as f:
-            while True:
-                chunk = f.read(MAX_DATA_SIZE)
-                if not chunk:
-                    break
-                self.rdt.send(chunk, TYPE_DATA)
+            data = f.read(PAYLOAD_SIZE)
+            while data:
+                packet = Packet.new_regular_packet(data, DOWNLOAD)
+                packet.download = DOWNLOAD
+                self.rdt.send(packet, self.stream)
+                data = f.read(PAYLOAD_SIZE)
+                
+            fin_packet = Packet.new_fin_packet()
+            self.rdt.send(fin_packet, self.stream)
 
-        self.rdt.send(DOWNLOAD_MARKER, TYPE_DATA)
+        self.logger.info("[CLIENT_HANDLER] Download completed")
 
-        print(f"[SERVER] Archivo enviado correctamente: {filepath}")
+    def enqueue(self, packet):
+            self.stream.enqueue(packet)
+        
+    def is_alive(self):
+        return super().is_alive()

@@ -1,67 +1,103 @@
 import socket
 import sys
 from os.path import abspath, dirname
+from lib.Errors.exceptions import MaximumRetriesError
+from lib.Packet.packet import Packet
+from lib.RDT.go_back_n import GoBackN
+from lib.RDT.stream_wrapper import StreamWrapper
+from lib.Common.constants import (
+    DOWNLOAD,
+    PAYLOAD_SIZE,
+    SAW_PROTOCOL,
+    GBN_PROTOCOL,
+    UPLOAD,
+)
+import time
+# from tqdm import tqdm
+import os
+
 
 # Agregar el directorio raíz del proyecto al sys.path
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
-from lib.RDT.stop_and_wait import MAX_DATA_SIZE, TYPE_DATA, TYPE_INIT, StopAndWaitRDT
+from lib.RDT.stop_and_wait import StopAndWait
 
 DOWNLOAD_MARKER = b"__DOWNLOAD_DONE__"
 UPLOAD_MARKER = b"__UPLOAD_DONE__"
 
+
 class Client:
-    def __init__(self, server_addr: str, server_port: int, protocol: str):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.server_addr = server_addr
-        self.server_port = server_port
-        self.protocol = (
-            protocol  # Protocolo de recuperación de errores (e.g., Stop-and-Wait)
+    def __init__(self, server_ip: str, server_port: int, protocol: str, logger):
+        self.stream = StreamWrapper(
+            socket.socket(socket.AF_INET, socket.SOCK_DGRAM), None
         )
+        self.server_ip = server_ip
+        self.server_port = server_port
+        self.rdt = (
+            StopAndWait(address=(self.server_ip, self.server_port), logger=logger)
+            if protocol == SAW_PROTOCOL
+            else GoBackN(address=(self.server_ip, self.server_port), logger=logger)
+        )
+        self.logger = logger
 
     def upload(self, src: str, filename: str):
-        # Inicializar RDT
-        rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port)
-        )
+        try:
+            self.rdt.initialize_handshake(self.stream, filename, UPLOAD)
+        except Exception as e:
+            self.logger.error(f"Error during handshake: {e}")
+            return
+        # Calcular el tamaño total del archivo
+        total_bytes = os.path.getsize(src)
+        sent_bytes = 0
+        bytes_transferred = 0
+        total_packets_sent = 0
 
-        # Enviar comando inicial UPLOAD <filename>
-        init_msg = f"UPLOAD|{filename.strip()}".encode()
-        rdt.send(init_msg, TYPE_INIT)
+        self.rdt.sequence_number = 0
+        self.rdt.ack_number = 0
 
-        # Abrir archivo y fragmentar
+        start_time = time.time()
+        self.logger.info(f"Starting upload of file: {filename}")
+
         with open(src, "rb") as f:
-            while True:
-                chunk = f.read(MAX_DATA_SIZE)
-                if not chunk:
-                    break
-                rdt.send(chunk, TYPE_DATA)
+            data = f.read(PAYLOAD_SIZE)
+            while data:
+                packet = Packet.new_regular_packet(data, UPLOAD)
+                self.rdt.send(packet, self.stream)
+                data = f.read(PAYLOAD_SIZE)
+                bytes_transferred += len(packet.get_payload())
+                total_packets_sent += 1
+                self.logger.debug(
+                    f"[CLIENT] Enviados {bytes_transferred} / {total_bytes} bytes ({total_bytes - bytes_transferred} restantes)"
+                )
+                self.logger.debug(
+                    f"[CLIENT] {bytes_transferred}/{total_bytes} bytes ({100 * bytes_transferred / total_bytes:.2f}%)"
+                )
 
-        # Enviar marcador de fin de transmisión
-        rdt.send(UPLOAD_MARKER, TYPE_DATA)
-        print(f"[CLIENT] Archivo '{src}' enviado como '{filename}'")
+            fin_packet = Packet.new_fin_packet()
+            try:
+                self.rdt.send(fin_packet, self.stream)
+            except MaximumRetriesError as e:
+                self.logger.error(f"Exception occurred: {e}")
 
-        # Cerrar socket
-        self.socket.close()
+            end_time = time.time()
+            elapsed_time = end_time - start_time
 
-    def download(self, dst: str, name: str):
-        # Inicializar RDT
-        rdt = StopAndWaitRDT(
-            self.socket, addr=(self.server_addr, self.server_port)
-        )
+            self.logger.info(f"Upload completed for file: {filename}")
+            self.logger.info(f"Total number of packets sent: {total_packets_sent}")
+            self.logger.info(
+                f"Total transfer time: {elapsed_time:.4f} seconds"
+            )
 
-        # Enviar comando inicial DOWNLOAD <filename>
-        init_msg = f"DOWNLOAD|{name.strip()}".encode()
-        rdt.send(init_msg, TYPE_INIT)
-
-        # Abrir archivo para escritura
+    def download(self, dst: str, filename: str):
+        try:
+            self.rdt.initialize_handshake(self.stream, filename, DOWNLOAD)
+        except Exception as e:
+            self.logger.error(f"Error during handshake: {e}")
+            return
         with open(dst, "wb") as f:
             while True:
-                chunk = rdt.recv_client()
-                if chunk == DOWNLOAD_MARKER:
+                packet = self.rdt.recv(self.stream)
+                if packet.is_fin():
                     break
-                f.write(chunk)
+                f.write(packet.get_payload())
 
-        print(f"[CLIENT] Archivo '{name}' descargado como '{dst}'")
-
-        # Cerrar socket
-        self.socket.close()
+        self.logger.info(f"[CLIENT] Archivo '{filename}' descargado como '{dst}'")

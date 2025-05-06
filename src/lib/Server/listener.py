@@ -1,55 +1,53 @@
 import socket
 import sys
 from os.path import abspath, dirname
-import threading
-from lib.RDT.stop_and_wait import StopAndWaitRDT
+from lib.Packet.packet import Packet
 from lib.Server.client_handler import ClientHandler
+from lib.Common.constants import PACKET_SIZE
 
 sys.path.insert(0, abspath(dirname(dirname(dirname(__file__)))))
 
-import queue
-
-lock = threading.Lock()
-
-
 class Listener:
-    def __init__(self, sock):
+    def __init__(self, sock, protocol, logger, storage_dir):
         self.sock = sock
-        self.handlers = {}
+        self.protocol = protocol
+        self.logger = logger
+        self.client_handlers = {}
+        self.storage_dir = storage_dir
 
-    def listen(self, storage_dir):
+    def listen(self):
         """Escucha conexiones entrantes y delega el manejo a handle_client."""
-        print(f"[LISTENER] LISTENER INICIADO")
+        self.logger.info(f"[LISTENER] Listening on {self.sock.getsockname()}")
         while True:
-            print(f"[LISTENER] Esperando paquetes...")
             try:
-                data, addr = self.sock.recvfrom(1024)
-                print(f"[LISTENER] Paquete recibido de {addr}")
-                with lock:
-                    print(f"[LISTENER] ANTES DEL IF ADDR")
-                    if addr not in self.handlers:
-                        print(f"[LISTENER] Nuevo cliente conectado: {addr}")
-                        q = queue.Queue()
-                        self.handlers[addr] = q
-                        threading.Thread(
-                            target=self.handle_client,
-                            args=(self.sock, addr, q, storage_dir),
-                            daemon=True,
-                        ).start()
-
-                    self.handlers[addr].put(data)
+                data, addr = self.sock.recvfrom(PACKET_SIZE)
+                packet = Packet.from_bytes(data)
+                self.logger.debug(f"[LISTENER] Received packet from {addr}: {packet}")
+                if packet.is_syn():
+                    filename_length = packet.get_payload()[0]
+                    filename = packet.get_payload()[1:filename_length + 1].decode('utf-8')
+                    handler = ClientHandler(
+                        addr,
+                        packet.sequence_number,
+                        self.protocol,
+                        self.logger,
+                        filename,
+                        packet.is_download(),
+                        self.storage_dir
+                        )
+                    self.client_handlers[addr] = handler
+                    self.client_handlers[addr].start()
+                else:
+                    if(addr in self.client_handlers):
+                        self.client_handlers[addr].enqueue(packet)
             except socket.timeout:
-                print(f"[LISTENER] Timeout alcanzado, continuando...")
                 continue
 
-    def handle_client(self, sock, addr, q, storage_dir):
-        try:
-            rdt = StopAndWaitRDT(sock, addr=addr, queue=q)
-            client = ClientHandler(rdt, storage_dir)
-            client.handle()
-        except Exception as e:
-            print(f"[LISTENER] Error procesando cliente {addr}: {e}")
-        finally:
-            with lock:
-                if addr in self.handlers:
-                    del self.handlers[addr]
+    def verify_threads(self):
+            new_threads = {}
+            for thread in self.client_handlers.values():
+                if not thread.is_alive():
+                    del thread
+                else:
+                    new_threads[thread.address] = thread
+            self.client_handlers = new_threads 
