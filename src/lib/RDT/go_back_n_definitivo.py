@@ -7,6 +7,7 @@ from lib.Packet.packet import Packet
 from lib.RDT.ack_handler import ACKHandler
 from lib.RDT.handshake import Protocol
 
+FIRST_ACK_RECEIVED = True
 
 class GoBackN(Protocol):
     def __init__(self, address, logger):
@@ -21,13 +22,11 @@ class GoBackN(Protocol):
         self.stream = None
         self.logger = logger
 
-
-
     def generate_packets(self, src):
         """
         Genereate packets to be sent.
         """
-        
+
         with open(src, "rb") as f:
             sequence_number = 0
             while True:
@@ -49,20 +48,17 @@ class GoBackN(Protocol):
                 self.sent_packets.append(pkt)
                 sequence_number += 1
 
-              
-
     def send(self, src, stream):
         if self.stream is None:
             self.stream = stream
 
         self.generate_packets(src)
 
-
         ack_thread = ACKHandler(self)
         ack_thread.start()
 
-
         self.start_transmits()
+        # ack_thread.join()
 
     def start_transmits(self):
         while self.running:
@@ -70,83 +66,19 @@ class GoBackN(Protocol):
                 if self.next_seq_number <= self.base + self.window_size:
                     packet = self.sent_packets[self.next_seq_number]
                     if packet:
-                        self.logger.debug(f"[GBN Send] Enviando packet {packet.sequence_number}")
+                        self.logger.debug(
+                            f"[GBN Send] Enviando packet {packet.sequence_number}"
+                        )
                         self.stream.send_to(packet.to_bytes(), self.address)
-                        if packet.is_fin():
-                            self.logger.debug(f"[GBN Send] Enviando FIN packet {packet.sequence_number}")
-                            self.stream.send_to(packet.to_bytes(), self.address)
-                            self.running = False
-                            return
                         self.next_seq_number += 1
-            # Pequeño sleep para no saturar CPU
-            #threading.Event().wait(0.2)
-
-    # def send(self, packet, stream):
-
-    #     self.logger.debug(
-    #         f"[GBN Send] Esperando para enviar el paquete... seq_num: {self.next_seq_number} base {self.base}"
-    #     )
-    #     if self.next_seq_number < self.base + self.window_size:
-    #         packet.sequence_number = self.next_seq_number
-    #         packet.ack_number = 0  # Ignorado por el receptor
-
-    #         self.sent_packets[self.next_seq_number] = packet
-
-    #         stream.send_to(packet.to_bytes(), self.address)
-    #         self.logger.debug(
-    #             f"[GBN Send] Enviando packet con packet_seq_num {packet.sequence_number} y self.seq_num {self.next_seq_number}"
-    #         )
-
-    #         self.next_seq_number += 1
-    #         self.logger.debug(f"[GBN Send] Actualizando seq a {self.next_seq_number}")
-
-    #         return
-    #     else:
-    #         self.handle_full_window()
-
-    # def handle_ack(self, stream):
-    #     while True:
-    #         self.logger.debug("[GBN ACK] Esperando ACK...")
-    #         try:
-
-    #             ack_packet = stream.receive()
-    #             self.logger.debug(f"[GBN ACK] Received ACK: {ack_packet}")
-    #             if ack_packet.is_ack():
-    #                 if ack_packet.get_ack_number() == self.base:
-    #                     self.base += 1
-
-    #                     if self.base == self.next_seq_number:
-    #                         # El timer se detiene porque ya 
-    #                         # no hay paquetes pendientes para enviar
-    #                         pass
-    #                     else:
-    #                         # Se deberia reiniciar el timer  
-    #                         # ya que self.base cambio
-    #                         pass
-
-    #                 elif ack_packet.get_ack_number() < self.base:
-    #                     # No hago nada hasta que salte el timeout de self.base,
-    #                     # una vez que salte el timeout, se reenvian todos los paquetes
-    #                     # desde self.base
-    #                     pass
-    #                 elif ack_packet.get_ack_number() > self.base:
-    #                     # Confiamos en el Receiver que si me mando un
-    #                     # ACK mayor a self.base, es porque ya recibio todos los
-    #                     # paquetes anteriores, pero los ACKs se peerdieron en el camino.
-    #                     self.base = ack_packet.get_ack_number() + 1
-    #                     self.sent_packets = {
-    #                         k: v for k, v in self.sent_packets.items() if k >= self.base
-    #                     }
-    #                     #start timer devuelta ya que base cambio
-
-    #         except timeout:
-    #             self.logger.debug("[GBN ACK] Timeout esperando ACK...")
-    #             # Timeout, reenviar todos los paquetes desde self.base
-    #             continue
+                
+                    
+               
+                
 
     def recv(self, stream):
         while True:
-            self.logger.debug("[GBN RECV] Antes del try, esperando paquete...")
+            # self.logger.debug("[GBN RECV] Antes del try, esperando paquete...")
             try:
                 packet = stream.receive()
                 self.logger.debug(
@@ -156,18 +88,20 @@ class GoBackN(Protocol):
                     f"[GBN RECV] self.last_ack_number: {self.last_ack_number}"
                 )
 
-                if packet.is_fin():
-                    self.logger.debug("[GBN RECV] Paquete FIN recibido")
-                    ack = Packet.new_ack_packet(
-                        self.last_ack_number, packet.sequence_number, None
-                    )
-                    return packet
-                
                 if packet.sequence_number == self.last_ack_number:
-
-                    ack = Packet.new_ack_packet(
-                        self.last_ack_number, packet.sequence_number, None
+                    self.logger.debug(
+                        f"[GBN RECV] Paquete en orden: {packet.sequence_number}, esperando {self.last_ack_number}"
                     )
+
+                    ack = None
+
+                    if packet.is_fin():
+                        self.logger.debug("[GBN RECV] Paquete FIN recibido")
+                        ack = Packet.new_fin_packet()
+                    else:
+                        ack = Packet.new_ack_packet(
+                            self.last_ack_number, packet.sequence_number, FIRST_ACK_RECEIVED
+                        )
                     stream.send_to(ack.to_bytes(), self.address)
                     self.logger.debug(f"[GBN RECV] ACK enviado: {ack}")
                     self.last_ack_number += 1
@@ -177,18 +111,35 @@ class GoBackN(Protocol):
                     self.logger.debug(
                         f"[GBN RECV] Paquete fuera de orden: {packet.sequence_number}, esperando {self.last_ack_number}"
                     )
-                    ack_number = self.last_ack_number - 1 if self.last_ack_number > 0 else 0
-                    ack = Packet.new_ack_packet(
-                        self.last_ack_number, ack_number, None
+                    self.logger.debug(
+                        f"[GBN RECV] self.last_ack_number: {self.last_ack_number}"
                     )
+
+                    ack_number = (
+                        self.last_ack_number - 1 if self.last_ack_number > 0 else 0
+                    )
+
+                    ack = Packet.new_ack_packet(self.last_ack_number, ack_number, False)
+                    self.logger.debug(f"[GBN RECV] ACK enviado en el ELSE: {ack}")
                     stream.send_to(ack.to_bytes(), self.address)
                     continue
 
             except (timeout, queue.Empty):
                 self.logger.debug("[GBN RECV] Timeoute esperando...")
-                ack_number = self.last_ack_number - 1 if self.last_ack_number > 0 else 0
-                ack = Packet.new_ack_packet(
-                    self.last_ack_number, ack_number, None
-                )
+                ack = self.make_ack_packet()
                 stream.send_to(ack.to_bytes(), self.address)
                 continue
+
+    def make_ack_packet(self):
+        ack_number = self.last_ack_number - 1 if self.last_ack_number > 0 else 0
+        if self.last_ack_number == 0:
+            # Si todavia no se recibio el primer paquete y hubo timeout,
+            # se envia un ACK como siempre, pero
+            # se pone un flag en False para que el receptor sepa que es el primer ACK
+            # y que el paquete 0 en realidad NO fue recibido, si no que hubo un timeout
+            # y el primer paquete se perdio.
+            ack = Packet.new_ack_packet(self.last_ack_number, ack_number, not FIRST_ACK_RECEIVED)
+        else:
+            ack = Packet.new_ack_packet(self.last_ack_number, ack_number, False)
+
+        return ack

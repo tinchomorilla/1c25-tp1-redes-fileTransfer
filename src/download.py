@@ -1,5 +1,5 @@
 from lib.Client.client import Client
-from lib.Client.args_parser import Parser, parse_args_download
+from lib.Client.args_parser import Parser
 from lib.Common.logger import initialize_logger
 
 
@@ -8,6 +8,8 @@ def main():
     args = parser.parse_args_download()
     
     logger = initialize_logger(args.debug_level, "download")
+
+    logger.info("[CLIENT] Iniciando logger para download en modo info")
 
     client = Client(args.host, int(args.port), args.protocol, logger)
 

@@ -25,17 +25,17 @@ sudo python3 src/lib/Mininet/download_topology.py
 
 - Ejecutar el servidor
 ```sh
-python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r stop_and_wait
+python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r saw
 ```
 
 - Ejecutar el cliente
   - Upload
 ```sh
-python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r stop_and_wait
+python3 src/upload.py -H 127.0.0.1 -p 9000 -s src/lib/Client/uploads/momo.jpeg -n copia4.jpeg -r saw -v
 ```
   - Download
 ```sh
-python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r stop_and_wait
+python3 src/download.py -H 127.0.0.1 -p 9000 -d src/lib/Client/downloads/nashe.jpeg -n momo.jpeg -r saw -v
 ```
 
 - Correr tests

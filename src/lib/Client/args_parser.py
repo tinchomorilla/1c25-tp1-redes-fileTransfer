@@ -13,7 +13,7 @@ class Parser:
         self.parser.add_argument("-q", "--quiet", action="store_true", help="decrease output verbosity")
         self.parser.add_argument("-H", "--host", metavar="addr", help="server IP address")
         self.parser.add_argument("-p", "--port", metavar="port", help="server port")
-        self.parser.add_argument("-r", "--protocol", metavar="protocol", help="saw or sr")
+        self.parser.add_argument("-r", "--protocol", metavar="protocol", help="saw or gbn")
 
     def _add_arguments_upload(self):
         self._add_arguments_shared()

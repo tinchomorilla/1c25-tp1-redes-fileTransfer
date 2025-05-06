@@ -13,15 +13,12 @@ def main():
     parser = Parser("Flags for Server Command")
 
     args = parser.parse_args_server()
-
-    print("Iniciando el servidor...")
     logger = initialize_logger(args.debug_level, "server")
 
     logger.info(f"[SERVER] Iniciando servidor en {args.host}:{args.port} con protocolo {args.protocol}")
     server = Server(args.host, args.port, args.storage_dir, args.protocol, logger)
 
     server.run()
-    
 
 
 if __name__ == "__main__":

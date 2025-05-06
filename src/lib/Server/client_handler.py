@@ -4,16 +4,13 @@ from threading import Thread as thread
 import os
 import threading
 from lib.Packet.packet import Packet
-from lib.RDT.go_back_n import GoBackN
+from lib.RDT.go_back_n_si_o_si import GoBackN
 from lib.RDT.stop_and_wait import StopAndWait
 from lib.RDT.stream_wrapper import StreamWrapper
 from lib.Common.constants import DOWNLOAD, PAYLOAD_SIZE, SAW_PROTOCOL
 
-DOWNLOAD_MARKER = b"__DOWNLOAD_DONE__"
-UPLOAD_MARKER = b"__UPLOAD_DONE__"
+
 lock = threading.Lock()
-
-
 
 class ClientHandler(thread):
     def __init__(
@@ -38,9 +35,9 @@ class ClientHandler(thread):
         
 
     def run(self):
-        print(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
+        self.logger.info(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
         self.rdt.response_handshake(self.stream, self.address, self.sequence_number_client)
-        print(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
+        self.logger.info(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
         try:
             if self.is_download:
                 self.handle_download()
@@ -56,19 +53,20 @@ class ClientHandler(thread):
 
         filepath = os.path.join(self.storage_dir, self.filename)
 
+        self.logger.info(f"[CLIENT_HANDLER] Abriendo archivo para escritura: {filepath} y escribiendo con datos del cliente...")
+
+        self.rdt.sequence_number = 0
+        self.rdt.ack_number = 0
+
         with open(filepath, 'wb') as f:  
-            print(f"[CLIENT_HANDLER] Abriendo archivo para escritura: {filepath}")
             while True:
-                print(f"[CLIENT_HANDLER] Recibiendo paquete...")
                 packet = self.rdt.recv(self.stream)
-                print(f"[CLIENT_HANDLER] Paquete recibido: {packet}")
                 if packet.is_fin():
                     break
                 self.logger.debug(f"[CLIENT_HANDLER] Recibiendo datos: {packet}")
-                print(f"[CLIENT_HANDLER] Escribiendo datos en el archivo...")
                 f.write(packet.get_payload())
 
-        print(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
+        self.logger.info(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
 
 
     def handle_download(self):
@@ -77,9 +75,11 @@ class ClientHandler(thread):
         filepath = os.path.join("./src/lib/Server/downloads", self.filename)
 
         if not os.path.exists(filepath):
-            print(f"[SERVER] Archivo no encontrado: {filepath}")
+            self.logger.error(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")(f"[SERVER] Archivo no encontrado: {filepath}")
             # Opcional: enviar mensaje de error al cliente
             return
+
+        self.logger.info(f"[CLIENT_HANDLER] Abriendo archivo para lectura: {filepath} y mandando datos al cliente...")
 
         with open(filepath, "rb") as f:
             data = f.read(PAYLOAD_SIZE)
@@ -88,11 +88,11 @@ class ClientHandler(thread):
                 packet.download = DOWNLOAD
                 self.rdt.send(packet, self.stream)
                 data = f.read(PAYLOAD_SIZE)
+                
             fin_packet = Packet.new_fin_packet()
-            self.protocol.send_packet(fin_packet, self.stream)
+            self.rdt.send(fin_packet, self.stream)
 
         self.logger.info("[CLIENT_HANDLER] Download completed")
-
 
     def enqueue(self, packet):
             self.stream.enqueue(packet)

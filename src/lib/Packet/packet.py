@@ -6,7 +6,7 @@ class Packet:
     def __init__(
         self,
         sequence_number,
-        ack_number,    
+        ack_number: int,    
         ack,
         syn,
         fin,
@@ -53,7 +53,7 @@ class Packet:
             payload=payload
         )
 
-    def new_ack_packet(sequence_number, ack_number, operation):
+    def new_ack_packet(sequence_number, ack_number:int, operation):
         return Packet(
             sequence_number=sequence_number,
             ack_number=ack_number,
@@ -134,6 +134,12 @@ class Packet:
     
     def is_download(self):
         return self.download
+    
+    def get_ack_number(self) -> int:
+        return self.ack_number
+    
+    # def first_ack_was_received_correctly(self):
+    #     return self.download
 
     def __str__(self):
         return f"sequence_number: {self.sequence_number},  is_ack: {self.ack}, payload_len: {len(self.payload)}, ack_number : {self.ack_number}"

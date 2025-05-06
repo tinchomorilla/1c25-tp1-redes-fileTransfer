@@ -17,14 +17,14 @@ class Listener:
 
     def listen(self):
         """Escucha conexiones entrantes y delega el manejo a handle_client."""
-        print(f"[LISTENER] Listening on {self.sock.getsockname()}")
+        self.logger.info(f"[LISTENER] Listening on {self.sock.getsockname()}")
         while True:
             try:
                 data, addr = self.sock.recvfrom(PACKET_SIZE)
                 packet = Packet.from_bytes(data)
-                print(f"[LISTENER] Received packet from {addr}: {packet}")
+                self.logger.debug(f"[LISTENER] Received packet from {addr}: {packet}")
                 if packet.is_syn():
-                    print(f"[LISTENER] Received SYN packet from {addr}")
+                    self.logger.debug(f"[LISTENER] Received SYN packet from {addr}")
                     filename_length = packet.get_payload()[0]
                     filename = packet.get_payload()[1:filename_length + 1].decode('utf-8')
                     handler = ClientHandler(
@@ -39,7 +39,7 @@ class Listener:
 
                     self.client_handlers[addr] = handler
                     self.client_handlers[addr].start()
-                    self.logger.info(f"Created new handler with key {addr}")
+                    self.logger.debug(f"Created new handler with key {addr}")
                 else:
                     if(addr in self.client_handlers):
                         self.client_handlers[addr].enqueue(packet)

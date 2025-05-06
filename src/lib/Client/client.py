@@ -1,8 +1,9 @@
 import socket
 import sys
 from os.path import abspath, dirname
+from lib.Errors.exceptions import MaximumRetriesError
 from lib.Packet.packet import Packet
-from lib.RDT.go_back_n import GoBackN
+from lib.RDT.go_back_n_si_o_si import GoBackN
 from lib.RDT.stream_wrapper import StreamWrapper
 from lib.Common.constants import (
     DOWNLOAD,
@@ -11,6 +12,9 @@ from lib.Common.constants import (
     GBN_PROTOCOL,
     UPLOAD,
 )
+
+# from tqdm import tqdm
+import os
 
 
 # Agregar el directorio raíz del proyecto al sys.path
@@ -31,42 +35,61 @@ class Client:
         self.rdt = (
             StopAndWait(address=(self.server_ip, self.server_port), logger=logger)
             if protocol == SAW_PROTOCOL
-            else GoBackN(self.socket, addr=(self.server_ip, self.server_port))
+            else GoBackN(address=(self.server_ip, self.server_port), logger=logger)
         )
         self.logger = logger
 
     def upload(self, src: str, filename: str):
-
         print(f"[CLIENT] Iniciando Handshake '{src}' como '{filename}'")
         self.rdt.initialize_handshake(self.stream, filename, UPLOAD)
         print(f"[CLIENT] Handshake completo")
-        # Abrir archivo y fragmentar
+
+        # Calcular el tamaño total del archivo
+        total_bytes = os.path.getsize(src)
+        sent_bytes = 0
+        bytes_transferred = 0
+        total_packets_sent = 0
+
+        self.rdt.sequence_number = 0
+        self.rdt.ack_number = 0
+
         with open(src, "rb") as f:
             print("[CLIENT] Archivo abierto")
             data = f.read(PAYLOAD_SIZE)
-            print(f"[CLIENT] Leyendo {len(data)} bytes")
             while data:
-                print("[CLIENT] Creando paquete")
                 packet = Packet.new_regular_packet(data, UPLOAD)
-                print("[CLIENT] Paquete creado")
                 self.rdt.send(packet, self.stream)
-                print(f"[CLIENT] Enviando paquete de {len(data)} bytes")
                 data = f.read(PAYLOAD_SIZE)
-            fin_packet = Packet.new_fin_packet()
+                bytes_transferred += len(packet.get_payload())
+                total_packets_sent += 1
+                self.logger.debug(
+                    f"[CLIENT] Enviados {bytes_transferred} / {total_bytes} bytes ({total_bytes - bytes_transferred} restantes)"
+                )
+                self.logger.debug(
+                    f"[CLIENT] {bytes_transferred}/{total_bytes} bytes ({100 * bytes_transferred / total_bytes:.2f}%)"
+                )
 
-        print("[CLIENT] Enviando paquete de finalización")
-        self.rdt.send(fin_packet, self.stream)
-        print(f"[CLIENT] Archivo '{src}' enviado como '{filename}'")
+            fin_packet = Packet.new_fin_packet()
+            try:
+                self.rdt.send(fin_packet, self.stream)
+            except MaximumRetriesError as e:
+                self.logger.error(f"Exception occurred: {e}")
+
+            self.logger.info(f"Upload completed for file: {filename}")
+            self.logger.info(f"Total number of packets sent: {total_packets_sent}")
 
     def download(self, dst: str, filename: str):
 
+        self.logger.info(f"[CLIENT] Iniciando Handshake '{dst}' como '{filename}'")
         self.rdt.initialize_handshake(self.stream, filename, DOWNLOAD)
+        self.logger.info(f"[CLIENT] Handshake completo")
 
         with open(dst, "wb") as f:
+            self.logger.debug("[CLIENT] Archivo abierto")
             while True:
-                packet = self.rdt.recv()
+                packet = self.rdt.recv(self.stream)
                 if packet.is_fin():
                     break
                 f.write(packet.get_payload())
 
-        print(f"[CLIENT] Archivo '{filename}' descargado como '{dst}'")
+        self.logger.info(f"[CLIENT] Archivo '{filename}' descargado como '{dst}'")

@@ -4,14 +4,12 @@ from lib.Common.constants import *
 from lib.Packet.packet import Packet
 from socket import *
 
-
-
 class Protocol(ABC):
 
     def __init__(self, address, logger):
         self.address = address
         self.sequence_number = 0
-        self.ack_number = 0
+        self.ack_number: int = 0
         self.logger = logger
 
     
@@ -20,19 +18,18 @@ class Protocol(ABC):
         while retries < RETRIES:
             first_syn_send = Packet.new_syn_packet(self.sequence_number, self.ack_number, filename, operation) 
             self.logger.info("Handshake initiated")
-            self.logger.info("Sending first syn with sequence number: " + str(self.sequence_number))
-            print("Sending first syn with sequence number: " + str(self.sequence_number))
+            self.logger.debug(f"Sending first syn with sequence number: {self.sequence_number}")
             stream.send_to(first_syn_send.to_bytes(), self.address)
 
             try:
                 syn_recv = stream.receive()
-                print("Received SYN packet: " + str(syn_recv))
+                self.logger.debug("Received SYN packet: " + str(syn_recv))
             except timeout:
                 self.logger.error("Syn response packet was not received")
                 retries += 1
                 continue
-
-            if not syn_recv.is_syn() or syn_recv.ack_number != self.sequence_number + 1:
+            
+            if not syn_recv.is_syn() or syn_recv.get_ack_number() != self.sequence_number + 1:
                 self.logger.error("Received packet is not syn or ack number is not correct")
                 retries += 1
                 continue
@@ -42,7 +39,7 @@ class Protocol(ABC):
             self.sequence_number += 1
             self.ack_number = syn_recv.sequence_number + 1
             ack = Packet.new_ack_packet(self.sequence_number, self.ack_number, operation)
-            print("Sending 2nd ack with sequence number")
+            self.logger.debug("Sending 2nd ack with sequence number")
             stream.send_to(ack.to_bytes(), self.address)
             self.logger.info("Sending ack with sequence number: " + str(self.sequence_number) + " and ack: " + str(self.ack_number))
             return
@@ -58,8 +55,8 @@ class Protocol(ABC):
             stream.send_to(syn_send.to_bytes(), address)
             try:
                 ack = stream.receive()
-                print("[HANDSHAKE_RESPONSE] Received ack packet: " + str(ack))
-                if ack.is_ack() and ack.ack_number == self.sequence_number + 1:
+                self.logger.debug("[HANDSHAKE_RESPONSE] Received ack packet: " + str(ack))
+                if ack.is_ack() and ack.get_ack_number() == self.sequence_number + 1:
                     self.sequence_number += 1
                     return
             except (timeout, queue.Empty):
