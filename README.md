@@ -60,6 +60,8 @@ python3 src/lib/Tests/download_stress_test.py
 
 ## Anexo, Fragmentación IPv4: Objetivo
 
+Comandos clave y analisis preliminar del comportamiento de la fragmentación IPv4, si se quiere ver el desarrollo completo ir directamente al informe.
+
 ### Objetivo
 
 Este experimento tiene como objetivo observar y comprender el proceso de fragmentación en IPv4, así como el comportamiento de los protocolos TCP y UDP ante la pérdida de fragmentos, y el impacto del MTU en el volumen de tráfico. Para ello, se diseña una red virtual en Mininet que simula un entorno donde la fragmentación ocurre de manera controlada y medible.
