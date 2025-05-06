@@ -25,6 +25,7 @@ class Server:
             self.logger.info(f"[SERVER] Servidor iniciado en {self.host}:{self.port}")
             listener = Listener(self.sock, self.protocol, self.logger, self.storage_dir)
             listener.listen()
+            
         except socket.error as e:
             self.logger.error(f"[SERVER] Error al enlazar el socket: {e}")
             self.sock.close()

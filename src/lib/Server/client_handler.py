@@ -3,11 +3,12 @@ import socket
 from threading import Thread as thread
 import os
 import threading
+from lib.Errors.exceptions import MaxSizeFileError
 from lib.Packet.packet import Packet
-from lib.RDT.go_back_n_si_o_si import GoBackN
+from lib.RDT.go_back_n import GoBackN
 from lib.RDT.stop_and_wait import StopAndWait
 from lib.RDT.stream_wrapper import StreamWrapper
-from lib.Common.constants import DOWNLOAD, PAYLOAD_SIZE, SAW_PROTOCOL
+from lib.Common.constants import DOWNLOAD, MAX_FILE_SIZE, PAYLOAD_SIZE, SAW_PROTOCOL
 
 
 lock = threading.Lock()
@@ -35,14 +36,15 @@ class ClientHandler(thread):
         
 
     def run(self):
-        self.logger.info(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
-        self.rdt.response_handshake(self.stream, self.address, self.sequence_number_client)
-        self.logger.info(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
         try:
+            self.logger.info(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
+            self.rdt.response_handshake(self.stream, self.address, self.sequence_number_client)
+            self.logger.info(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
+            self.rdt.sequence_number = 0
+            self.rdt.ack_number = 0
             if self.is_download:
                 self.handle_download()
             else:
-                
                 self.handle_upload()
         except Exception as e:
             self.logger.error(f"[CLIENT_HANDLER] Error en la transferencia: {e}")
@@ -53,17 +55,16 @@ class ClientHandler(thread):
 
         filepath = os.path.join(self.storage_dir, self.filename)
 
-        self.logger.info(f"[CLIENT_HANDLER] Abriendo archivo para escritura: {filepath} y escribiendo con datos del cliente...")
-
-        self.rdt.sequence_number = 0
-        self.rdt.ack_number = 0
-
+        
+        file_size = os.path.getsize(filepath)
+        if file_size > MAX_FILE_SIZE:
+            raise MaxSizeFileError(f"El archivo {filepath} supera el tamaño máximo permitido de {MAX_FILE_SIZE} bytes")
+        
         with open(filepath, 'wb') as f:  
             while True:
                 packet = self.rdt.recv(self.stream)
                 if packet.is_fin():
                     break
-                self.logger.debug(f"[CLIENT_HANDLER] Recibiendo datos: {packet}")
                 f.write(packet.get_payload())
 
         self.logger.info(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")
@@ -72,14 +73,10 @@ class ClientHandler(thread):
     def handle_download(self):
         """Lógica para manejar la descarga de archivos hacia el cliente."""
         
-        filepath = os.path.join("./src/lib/Server/downloads", self.filename)
+        filepath = os.path.join(self.storage_dir, self.filename)
 
         if not os.path.exists(filepath):
-            self.logger.error(f"[CLIENT_HANDLER] Archivo recibido correctamente: {filepath}")(f"[SERVER] Archivo no encontrado: {filepath}")
-            # Opcional: enviar mensaje de error al cliente
-            return
-
-        self.logger.info(f"[CLIENT_HANDLER] Abriendo archivo para lectura: {filepath} y mandando datos al cliente...")
+            raise FileNotFoundError(f"El archivo {filepath} no existe")
 
         with open(filepath, "rb") as f:
             data = f.read(PAYLOAD_SIZE)

@@ -3,7 +3,7 @@ import sys
 from os.path import abspath, dirname
 from lib.Errors.exceptions import MaximumRetriesError
 from lib.Packet.packet import Packet
-from lib.RDT.go_back_n_si_o_si import GoBackN
+from lib.RDT.go_back_n import GoBackN
 from lib.RDT.stream_wrapper import StreamWrapper
 from lib.Common.constants import (
     DOWNLOAD,
@@ -40,10 +40,11 @@ class Client:
         self.logger = logger
 
     def upload(self, src: str, filename: str):
-        print(f"[CLIENT] Iniciando Handshake '{src}' como '{filename}'")
-        self.rdt.initialize_handshake(self.stream, filename, UPLOAD)
-        print(f"[CLIENT] Handshake completo")
-
+        try:
+            self.rdt.initialize_handshake(self.stream, filename, UPLOAD)
+        except Exception as e:
+            self.logger.error(f"Error during handshake: {e}")
+            return
         # Calcular el tamaño total del archivo
         total_bytes = os.path.getsize(src)
         sent_bytes = 0
@@ -54,7 +55,6 @@ class Client:
         self.rdt.ack_number = 0
 
         with open(src, "rb") as f:
-            print("[CLIENT] Archivo abierto")
             data = f.read(PAYLOAD_SIZE)
             while data:
                 packet = Packet.new_regular_packet(data, UPLOAD)
@@ -79,13 +79,12 @@ class Client:
             self.logger.info(f"Total number of packets sent: {total_packets_sent}")
 
     def download(self, dst: str, filename: str):
-
-        self.logger.info(f"[CLIENT] Iniciando Handshake '{dst}' como '{filename}'")
-        self.rdt.initialize_handshake(self.stream, filename, DOWNLOAD)
-        self.logger.info(f"[CLIENT] Handshake completo")
-
+        try:
+            self.rdt.initialize_handshake(self.stream, filename, DOWNLOAD)
+        except Exception as e:
+            self.logger.error(f"Error during handshake: {e}")
+            return
         with open(dst, "wb") as f:
-            self.logger.debug("[CLIENT] Archivo abierto")
             while True:
                 packet = self.rdt.recv(self.stream)
                 if packet.is_fin():

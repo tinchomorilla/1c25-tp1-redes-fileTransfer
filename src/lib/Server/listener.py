@@ -24,7 +24,6 @@ class Listener:
                 packet = Packet.from_bytes(data)
                 self.logger.debug(f"[LISTENER] Received packet from {addr}: {packet}")
                 if packet.is_syn():
-                    self.logger.debug(f"[LISTENER] Received SYN packet from {addr}")
                     filename_length = packet.get_payload()[0]
                     filename = packet.get_payload()[1:filename_length + 1].decode('utf-8')
                     handler = ClientHandler(
@@ -36,22 +35,18 @@ class Listener:
                         packet.is_download(),
                         self.storage_dir
                         )
-
                     self.client_handlers[addr] = handler
                     self.client_handlers[addr].start()
-                    self.logger.debug(f"Created new handler with key {addr}")
                 else:
                     if(addr in self.client_handlers):
                         self.client_handlers[addr].enqueue(packet)
             except socket.timeout:
-                self.logger.debug("[LISTENER] Timeout waiting for packet")
                 continue
 
     def verify_threads(self):
             new_threads = {}
             for thread in self.client_handlers.values():
                 if not thread.is_alive():
-                    self.logger.debug(f"Deleted client thread {thread.address}")
                     del thread
                 else:
                     new_threads[thread.address] = thread

@@ -14,15 +14,25 @@ sudo apt install mininet
 
 ## Ejecutando el proyecto
 
-- Para correr el script de la topologia en mininet (upload)
+### Para correr el script de la topologia en mininet 
+
+Se debe especificar con `--r` y el protocolo deseado (`saw` o `gbn`).
+
+- Upload
 ```sh
-sudo python3 src/lib/Mininet/upload_topology.py
+sudo python3 src/lib/Mininet/upload_topology.py --r saw
 ```
-- Para correr el script de la topologia en mininet (download)
+- Download
 ```sh
-sudo python3 src/lib/Mininet/download_topology.py
+sudo python3 src/lib/Mininet/download_topology.py --r saw
 ```
 
+- Upload con Multithread
+```sh
+sudo python3 src/lib/Mininet/upload_topology_multithread.py --r gbn
+```
+
+### Para ejecutar cliente o servidor localmente
 - Ejecutar el servidor
 ```sh
 python3 src/start_server.py -H 127.0.0.1 -p 9000 -s src/lib/Server/downloads -r saw
