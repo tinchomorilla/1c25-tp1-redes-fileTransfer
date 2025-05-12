@@ -93,6 +93,10 @@ class Client:
         except Exception as e:
             self.logger.error(f"Error during handshake: {e}")
             return
+
+        self.rdt.sequence_number = 0
+        self.rdt.ack_number = 0
+        
         with open(dst, "wb") as f:
             while True:
                 packet = self.rdt.recv(self.stream)
