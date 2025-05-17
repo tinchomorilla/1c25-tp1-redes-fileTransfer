@@ -23,7 +23,7 @@ def customTopo(protocol):
 
     print("*** Creating links with 10% packet loss")
     net.addLink(h1, s1, loss=10)
-    net.addLink(h2, s1, loss=10)
+    net.addLink(h2, s1) # loss=10
    
     print("*** Starting network")
     net.start()
@@ -33,8 +33,8 @@ def customTopo(protocol):
 
     print("*** Launching terminals with commands")
 
-    makeTerm(h1, cmd=f"bash -c 'python3 src/start_server.py -H 10.0.0.1 -p 9000 -s src/lib/Server/downloads -r {protocol} -q; exec bash'")
-    makeTerm(h2, cmd=f"bash -c 'python3 src/upload.py -H 10.0.0.1 -p 9000 -s src/lib/Client/uploads/5MB.pdf -n copia5mbsaw.pdf -r {protocol} -q; exec bash'")
+    makeTerm(h1, cmd=f"bash -c 'python3 src/start_server.py -H 10.0.0.1 -p 9000 -s src/lib/Server/downloads -r {protocol} -v; exec bash'")
+    makeTerm(h2, cmd=f"bash -c 'python3 src/upload.py -H 10.0.0.1 -p 9000 -s src/lib/Client/uploads/5MB.pdf -n copia5MBGBN.pdf -r {protocol} -v; exec bash'")
 
     print("*** Running CLI")
     CLI(net)
