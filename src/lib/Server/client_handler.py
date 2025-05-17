@@ -40,8 +40,6 @@ class ClientHandler(thread):
             self.logger.info(f"[CLIENT_HANDLER] Iniciando handshake con {self.address}")
             self.rdt.response_handshake(self.stream, self.address, self.sequence_number_client)
             self.logger.info(f"[CLIENT_HANDLER] Handshake completo con {self.address}")
-            self.rdt.sequence_number = 0
-            self.rdt.ack_number = 0
             if self.is_download:
                 self.handle_download()
             else:
@@ -54,11 +52,6 @@ class ClientHandler(thread):
         """Lógica para manejar la subida de archivos desde el cliente."""
 
         filepath = os.path.join(self.storage_dir, self.filename)
-
-        
-        file_size = os.path.getsize(filepath)
-        if file_size > MAX_FILE_SIZE:
-            raise MaxSizeFileError(f"El archivo {filepath} supera el tamaño máximo permitido de {MAX_FILE_SIZE} bytes")
         
         with open(filepath, 'wb') as f:  
             while True:
@@ -77,7 +70,7 @@ class ClientHandler(thread):
 
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"El archivo {filepath} no existe")
-
+        
         with open(filepath, "rb") as f:
             data = f.read(PAYLOAD_SIZE)
             while data:

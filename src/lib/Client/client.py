@@ -13,6 +13,7 @@ from lib.Common.constants import (
     UPLOAD,
 )
 import time
+
 # from tqdm import tqdm
 import os
 
@@ -45,14 +46,12 @@ class Client:
         except Exception as e:
             self.logger.error(f"Error during handshake: {e}")
             return
+        
         # Calcular el tamaño total del archivo
         total_bytes = os.path.getsize(src)
         sent_bytes = 0
         bytes_transferred = 0
         total_packets_sent = 0
-
-        self.rdt.sequence_number = 0
-        self.rdt.ack_number = 0
 
         start_time = time.time()
         self.logger.info(f"Starting upload of file: {filename}")
@@ -83,9 +82,7 @@ class Client:
 
             self.logger.info(f"Upload completed for file: {filename}")
             self.logger.info(f"Total number of packets sent: {total_packets_sent}")
-            self.logger.info(
-                f"Total transfer time: {elapsed_time:.4f} seconds"
-            )
+            self.logger.info(f"Total transfer time: {elapsed_time:.4f} seconds")
 
     def download(self, dst: str, filename: str):
         try:
@@ -94,9 +91,6 @@ class Client:
             self.logger.error(f"Error during handshake: {e}")
             return
 
-        self.rdt.sequence_number = 0
-        self.rdt.ack_number = 0
-        
         with open(dst, "wb") as f:
             while True:
                 packet = self.rdt.recv(self.stream)
