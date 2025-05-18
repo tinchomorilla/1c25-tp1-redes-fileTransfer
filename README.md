@@ -29,7 +29,7 @@ sudo python3 src/lib/Mininet/download_topology.py --r saw
 
 - Upload con Multithread
 ```sh
-sudo python3 src/lib/Mininet/upload_topology_multithread.py --r gbn
+sudo python3 src/lib/Mininet/server_with_4_hosts.py --r gbn
 ```
 
 ### Para ejecutar cliente o servidor localmente
