@@ -23,7 +23,7 @@ class Listener:
                 data, addr = self.sock.recvfrom(PACKET_SIZE)
                 packet = Packet.from_bytes(data)
                 self.logger.debug(f"[LISTENER] Received packet from {addr}: {packet}")
-                if packet.is_syn():
+                if packet.is_syn() and addr not in self.client_handlers:
                     filename_length = packet.get_payload()[0]
                     filename = packet.get_payload()[1:filename_length + 1].decode('utf-8')
                     handler = ClientHandler(
