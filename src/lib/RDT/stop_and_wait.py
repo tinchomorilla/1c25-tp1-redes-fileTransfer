@@ -6,6 +6,7 @@ import queue
 from lib.RDT.handshake import Protocol
 
 
+
 class StopAndWait(Protocol):
 
     def send(self, packet, stream):
@@ -28,9 +29,9 @@ class StopAndWait(Protocol):
 
                 if (
                     recv_packet.is_fin()
-                    and recv_packet.get_ack_number() == self.ack_number
+                    and recv_packet.get_ack_number() == self.sequence_number + 1
                 ):
-                    self.logger.debug("Received fin packet")
+                    self.logger.debug("[WAIT_ACK] Received fin packet")
                     return
 
                 if not recv_packet.is_ack():
